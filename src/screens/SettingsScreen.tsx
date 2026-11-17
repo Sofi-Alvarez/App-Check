@@ -194,6 +194,7 @@ export function SettingsScreen({ c }: { c: Ctx }) {
         <Btn t={t} label="Abrir ajustes de la app" onPress={() => Linking.openSettings()} />
       </Card>
 
+      {c.engine.events ? null : (
       <Card t={t}>
         <Label t={t}>Martes con adscripción</Label>
         <Text style={[s.note, { color: t.muted }]}>Próximos martes con adscripción, cada 14 días:</Text>
@@ -208,6 +209,7 @@ export function SettingsScreen({ c }: { c: Ctx }) {
           <Pill t={t} label="+ 1 semana" onPress={() => shiftAnchor(7)} />
         </View>
       </Card>
+      )}
 
       <Card t={t}>
         <Label t={t}>Copia de seguridad</Label>
@@ -246,6 +248,44 @@ export function SettingsScreen({ c }: { c: Ctx }) {
         </Card>
       ) : null}
 
+      {c.engine.events ? (
+        <Card t={t}>
+          <Label t={t}>Agenda</Label>
+          <Text style={[s.note, { color: t.muted }]}>
+            Estas acciones cambian tu agenda, pero nunca borran el registro de uso (Datos y CSV). Puedes deshacerlas durante 8 segundos.
+          </Text>
+          <Btn
+            t={t}
+            kind="ghost"
+            label="Restaurar la plantilla inicial"
+            onPress={() =>
+              Alert.alert(
+                'Restaurar la plantilla inicial',
+                'Se reemplazan todos tus eventos por la rutina con la que empezó la app, y se quitan los cambios de un solo día. Tus categorías, metas y el registro de uso se conservan.',
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { text: 'Restaurar', style: 'destructive', onPress: () => c.runEvent(() => c.engine.events!.restoreTemplate(), 'Se restauró la plantilla inicial') },
+                ],
+              )
+            }
+          />
+          <Btn
+            t={t}
+            kind="ghost"
+            label="Borrar toda la agenda"
+            onPress={() =>
+              Alert.alert(
+                'Borrar toda la agenda',
+                'Se quitan todos los eventos, las categorías y las metas. Queda una categoría "General" para empezar de cero. El registro de uso (Datos y CSV) no se borra.',
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { text: 'Borrar', style: 'destructive', onPress: () => c.runEvent(() => c.engine.events!.clearAll(), 'Se borró toda la agenda') },
+                ],
+              )
+            }
+          />
+        </Card>
+      ) : (
       <Card t={t}>
         <Label t={t}>Agenda</Label>
         <Text style={[s.note, { color: t.muted }]}>
@@ -263,6 +303,7 @@ export function SettingsScreen({ c }: { c: Ctx }) {
           }
         />
       </Card>
+      )}
     </ScrollView>
   );
 }

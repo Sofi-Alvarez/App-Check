@@ -76,4 +76,41 @@ describe('motor v2: operaciones de eventos (fase 3)', () => {
     expect(r.ok).toBe(false);
     expect(JSON.stringify(repo.loadAgenda())).toBe(before);
   });
+
+  test('restaurar la plantilla inicial: vuelve la rutina original con sus ids, conserva metas y repone categorías eliminadas', () => {
+    const { engine } = setup();
+    const ev = engine.events!;
+    const original = engine.blocksFor('2026-11-24')!.map((b) => b.id).sort();
+    ev.create('2026-11-24', p);
+    const jobs = engine.blocksFor('2026-11-24')!.find((b) => b.t === '/jobs y postular')!;
+    ev.remove(jobs.id, '2026-11-24', 'always');
+    expect(ev.deleteCategory('english', 'project').ok).toBe(true);
+    ev.restoreTemplate();
+    const ids = engine.blocksFor('2026-11-24')!.map((b) => b.id).sort();
+    expect(ids).toEqual(expect.arrayContaining(original.filter((i) => !i.startsWith('u-'))));
+    expect(engine.blocksFor('2026-11-24')!.some((b) => b.t === 'Correr')).toBe(false);
+    expect(ev.categoriesAll().some((c) => c.id === 'english' && !c.archived)).toBe(true);
+    expect(ev.goalsAll().map((g) => g.id)).toContain('com');
+  });
+
+  test('borrar toda la agenda deja solo la categoría "General" y se puede deshacer', () => {
+    const { engine, repo } = setup();
+    const ev = engine.events!;
+    const snap = ev.snapshot();
+    const before = JSON.stringify(repo.loadAgenda());
+    ev.clearAll();
+    expect(engine.blocksFor('2026-11-16')).toEqual([]);
+    expect(ev.categoriesAll().map((c) => c.name)).toEqual(['General']);
+    expect(ev.goalsAll()).toEqual([]);
+    expect(repo.loadAllLog().length).toBeGreaterThan(0); // el registro no se toca
+    ev.restore(snap);
+    expect(JSON.stringify(repo.loadAgenda())).toBe(before);
+  });
+
+  test('después de borrar todo se puede crear un evento con la categoría "General"', () => {
+    const { engine } = setup();
+    engine.events!.clearAll();
+    expect(engine.events!.create('2026-11-21', { ...p, categoryId: 'general' }).ok).toBe(true);
+    expect(engine.category(engine.blocksFor('2026-11-21')![0].c).name).toBe('General');
+  });
 });

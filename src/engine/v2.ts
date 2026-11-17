@@ -22,7 +22,7 @@ import { buildSessions } from '../sessions';
 import type { AgendaState, Category } from '../domain/types';
 import type { Settings } from '../storeShape';
 import {
-  DEFAULT_TUE_ANCHOR, applyDayList, dayKindOf, flipTuesdays, legacyOf, listsFromSeries, newTaskId, rebuildRoot,
+  DEFAULT_TUE_ANCHOR, applyDayList, clearAgenda, dayKindOf, flipTuesdays, legacyOf, listsFromSeries, newTaskId, rebuildRoot,
   restoreDefaults, toEngineBlocks,
 } from './legacy-ops';
 import { applyMarginTo, planMarginFor } from './margin';
@@ -302,6 +302,14 @@ export function createV2Engine(repo: Repository, clock: () => Date = () => new D
           for (const d of dates) if (isActiveOn(g, d)) out.push({ goalId: g.id, name: g.name, date: d, time: g.reminder });
         }
         return out;
+      },
+      restoreTemplate() {
+        save(restoreDefaults(state(), anchor(), today()));
+        return { ok: true, id: '' };
+      },
+      clearAll() {
+        save(clearAgenda());
+        return { ok: true, id: '' };
       },
       snapshot: () => structuredCloneState(state()),
       restore: (snap) => save(snap),

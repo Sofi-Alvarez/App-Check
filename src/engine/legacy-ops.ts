@@ -6,6 +6,7 @@ import { Block, DayType, LIST_KEYS, defaultBlocks } from '../agenda';
 import { addDaysISO, mondayNumber, weekdayOf } from '../domain/dates';
 import { buildDay, occursOn } from '../domain/recurrence';
 import type { AgendaState, ExceptionFields, Series, SeriesException } from '../domain/types';
+import { SEED_CATEGORIES } from '../domain/categories';
 import { seriesFromLists, seriesStarts } from '../migration/v1-to-v2';
 import type { EngineBlock } from './types';
 
@@ -200,18 +201,41 @@ export function applyDayList(state: AgendaState, date: string, list: EngineBlock
 
 // ---- Restaurar y mover los martes --------------------------------------------------------------------------------
 
-/** Vuelve a la agenda original: series desde `defaultBlocks()`, sin excepciones ni eventos de un día. */
+/**
+ * Vuelve a la agenda original (la plantilla inicial): series desde `defaultBlocks()` con sus ids de siempre, para que
+ * el registro histórico se siga uniendo; sin excepciones ni eventos de un día. Conserva categorías y metas, y vuelve a
+ * agregar las categorías iniciales que usa la rutina si se habían eliminado.
+ */
 export function restoreDefaults(state: AgendaState, anchor: string, today: string): AgendaState {
   const lists = Object.fromEntries(LIST_KEYS.map((k) => [k, defaultBlocks(k)])) as Record<DayType, Block[]>;
   const built = seriesFromLists(lists, globalStarts(state, anchor, today));
   const ids = new Set(built.series.map((s) => s.id));
+  const used = new Set(built.series.map((s) => s.categoryId));
+  const missing = SEED_CATEGORIES.filter((c) => used.has(c.id) && !state.categories.some((x) => x.id === c.id));
   return {
     ...state,
+    categories: [
+      ...state.categories.map((c) => (used.has(c.id) && c.archived ? { ...c, archived: false } : c)),
+      ...missing.map((c) => ({ ...c })),
+    ],
     series: built.series,
     exceptions: [],
     legacyBid: built.legacyBid,
     goals: state.goals.map((g) => ({ ...g, links: g.links.filter((l) => ids.has(l)) })),
   };
+}
+
+/** Categoría que queda al borrar toda la agenda, para poder seguir creando eventos. */
+export const GENERAL_CATEGORY = {
+  id: 'general', name: 'General', color: 'blue' as const, movable: true, tracked: true, marginPreference: 'normal' as const, archived: false,
+};
+
+/**
+ * Borra toda la agenda (spec 009, 7.4): eventos, categorías y metas. Queda solo la categoría "General". El registro de
+ * uso y los conteos por día no están en este estado y no se tocan.
+ */
+export function clearAgenda(): AgendaState {
+  return { categories: [{ ...GENERAL_CATEGORY }], series: [], exceptions: [], goals: [], legacyBid: {} };
 }
 
 /**

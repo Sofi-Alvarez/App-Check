@@ -287,14 +287,25 @@ Sigue pendiente de la rutina original: la tarjeta "Martes con adscripción" de A
 
 | ID | Tarea | Tamaño | Depende de | Cubre |
 |---|---|---|---|---|
-| T6.1 | **Reemplazar "Restaurar agenda original"** por "Restaurar la plantilla inicial" y "Borrar toda la agenda" (spec 009, 7.4). Ninguna toca el registro | S | T1.6 | spec 009 §7.4 |
-| T6.2 | **Limpieza**: borrar `DayType`, `Cat`, `G_*`, `GOAL_LABELS`, el adaptador de la fase 1 y los textos de búsqueda de empleo que queden en el código | M | todas | CA, CG |
-| T6.3 | **Revisión de accesibilidad**: controles de 48 dp o más, hoja de alcance legible con lectores de pantalla y texto grande, mensajes de error junto al campo | M | T3.4, T5.2 | spec 009 §7.3 |
+| T6.1 ✅ | **Reemplazar "Restaurar agenda original"** por "Restaurar la plantilla inicial" y "Borrar toda la agenda" (spec 009, 7.4). Ninguna toca el registro | S | T1.6 | spec 009 §7.4 |
+| T6.2 🔶 parcial | **Limpieza**: borrar `DayType`, `Cat`, `G_*`, `GOAL_LABELS`, el adaptador de la fase 1 y los textos de búsqueda de empleo que queden en el código | M | todas | CA, CG |
+| T6.3 ✅ | **Revisión de accesibilidad**: controles de 48 dp o más, hoja de alcance legible con lectores de pantalla y texto grande, mensajes de error junto al campo | M | T3.4, T5.2 | spec 009 §7.3 |
 | T6.4 | **Textos en claves** para poder traducir después, sin traducir todavía | M | T6.2 | principio 8 de la constitución |
 | T6.5 | **Publicación**: se agrega solo JavaScript, así que alcanza con una actualización por internet para la versión 1.1.0, siempre que no se sumen librerías con código nativo. Se agrega una nota en `INSTALAR.md` | S | todas | entrega |
 | T6.6 | **Pasada final** sobre todos los criterios CA y CG con la lista de verificación del teléfono | M | todas | cierre |
 
 ---
+
+**Estado de la fase 6 (17/11/2026).** 285 pruebas en verde (typecheck, lint y empaquetado para Android también pasan).
+
+| Tarea | Estado | Qué quedó |
+|---|---|---|
+| T6.1 | ✅ | Con el modelo nuevo, Ajustes → Agenda tiene "Restaurar la plantilla inicial" (vuelve la rutina original con sus ids de siempre, quita los cambios de un día, conserva categorías y metas y repone las categorías iniciales que se hubieran eliminado) y "Borrar toda la agenda" (quita eventos, categorías y metas; queda una categoría "General" para poder seguir). Las dos piden confirmación, tienen "Deshacer" y no tocan el registro. Con el formato viejo sigue "Restaurar agenda original" |
+| T6.2 | 🔶 parcial | Con el modelo nuevo ya no aparecen la tarjeta "Martes con adscripción", la etiqueta del tipo de día ni "Restaurar agenda original". **No se borró el código de la versión vieja** (motor v1, `schedule.ts`, `TaskEditor`, contenido de `agenda.ts`, migración): es la red de seguridad si los datos nuevos fallaran al abrir la app, y la migración lo necesita para leer los datos viejos. Recomendado borrarlo cuando Sofía confirme en el teléfono la revisión pendiente de la fase 2 y un tiempo de uso sin problemas |
+| T6.3 | ✅ | Pastillas de al menos 48 × 48 dp (antes 44 de alto). Prueba automática (`accessibility-test.tsx`) que recorre Agenda, Metas, Categorías y los dos editores y falla si algún elemento tocable no tiene nombre para lectores de pantalla (con una prueba de control que comprueba que el revisor detecta uno sin nombre). Las hojas de alcance ya eran legibles con lector de pantalla (cada opción tiene nombre y explicación) |
+| T6.4 | Pendiente | Textos en claves para traducir más adelante |
+| T6.5 | Pendiente | Publicación final (se puede publicar ya: solo cambia código JavaScript) |
+| T6.6 | Pendiente | Pasada final por todos los criterios en el teléfono |
 
 ## 4. Orden recomendado de entregas
 

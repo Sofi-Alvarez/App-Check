@@ -65,7 +65,7 @@ const s = StyleSheet.create({
   label: { fontSize: 12, fontWeight: '700', letterSpacing: 1.1, textTransform: 'uppercase' },
   btn: { minHeight: 48, paddingHorizontal: 18, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   btnText: { fontSize: 16, fontWeight: '700' },
-  pill: { minHeight: 44, paddingHorizontal: 14, borderRadius: 99, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  pill: { minHeight: 48, minWidth: 48, paddingHorizontal: 14, borderRadius: 99, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   pillText: { fontSize: 14, fontWeight: '700' },
   bar: { height: 6, borderRadius: 99, overflow: 'hidden' },
 });

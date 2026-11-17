@@ -180,6 +180,10 @@ export interface EventOps {
   linkableSeries(): { id: string; title: string; summary: string }[];
   /** Avisos propios de las metas en esas fechas: una hora por meta activa ese día. */
   goalReminders(dates: string[]): { goalId: string; name: string; date: string; time: string }[];
+  /** Restaura la plantilla inicial (la rutina original). Conserva categorías, metas y el registro. */
+  restoreTemplate(): { ok: true; id: string };
+  /** Borra eventos, categorías y metas (queda "General"). No toca el registro. */
+  clearAll(): { ok: true; id: string };
   /** Estado completo, para deshacer. */
   snapshot(): AgendaState;
   restore(snap: AgendaState): void;
