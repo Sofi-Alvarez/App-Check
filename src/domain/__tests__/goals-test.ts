@@ -1,6 +1,9 @@
-import { countPerTime, dailyTarget, goalVersionOn, isActiveOn, quantityProgress, timeProgress } from '../goals';
-import type { SessionLike } from '../goals';
-import type { Goal } from '../types';
+import {
+  countPerTime, createGoal, dailyTarget, deleteGoal, goalNeedsScope, goalVersionOn, isActiveOn, quantityProgress, setGoalArchived,
+  timeProgress, updateGoal,
+} from '../goals';
+import type { GoalInput, GoalOpResult, SessionLike } from '../goals';
+import type { AgendaState, Goal } from '../types';
 
 const goal = (over: Partial<Goal> = {}): Goal => ({
   id: 'com', name: 'Comentarios', kind: 'quantity', unit: 'comentarios', links: [], reminder: null, archived: false,
@@ -77,5 +80,97 @@ describe('tiempo', () => {
   test('CA-13: "N en M min" en una meta de cantidad y tiempo', () => {
     expect(countPerTime('com', s('b', '2026-11-17', 18, 'manual', { com: 5 }))).toEqual({ count: 5, minutes: 18 });
     expect(countPerTime('com', s('b', '2026-11-17', 18, 'manual'))).toBeNull();
+  });
+});
+
+describe('gestión de metas (CG-22 a CG-28)', () => {
+  const st = (goals: Goal[] = []): AgendaState => ({ categories: [], series: [], exceptions: [], goals, legacyBid: {} });
+  const input = (over: Partial<GoalInput> = {}): GoalInput => ({
+    name: 'Páginas leídas', kind: 'quantity', unit: 'páginas', target: 20, period: 'day', activeDays: [1, 2, 3, 4, 5],
+    links: [], reminder: null, ...over,
+  });
+  const ok = (r: GoalOpResult) => {
+    if (!r.ok) throw new Error(JSON.stringify(r.error));
+    return r;
+  };
+
+  test('CG-22: una meta de cantidad nueva, con objetivo 20 por día', () => {
+    const r = ok(createGoal(st(), input(), '2026-11-17', 'm1'));
+    const g = r.state.goals[0];
+    expect(g).toMatchObject({ id: 'm1', name: 'Páginas leídas', kind: 'quantity', unit: 'páginas', archived: false });
+    expect(quantityProgress(g, ['2026-11-17'], () => 25)).toEqual({ value: 25, target: 20 });
+  });
+
+  test('CG-23: una meta de tiempo sin eventos asociados no se guarda', () => {
+    const r = createGoal(st(), input({ kind: 'time', unit: '' }), '2026-11-17');
+    expect(r.ok || r.error).toEqual(['time-needs-event']);
+    expect(createGoal(st(), input({ kind: 'both' }), '2026-11-17').ok).toBe(false);
+    expect(createGoal(st(), input({ kind: 'time', unit: '', links: ['s1'] }), '2026-11-17').ok).toBe(true);
+  });
+
+  test('CG-28: dos metas activas con el mismo nombre, no (sin distinguir mayúsculas)', () => {
+    const base = ok(createGoal(st(), input(), '2026-11-17', 'm1')).state;
+    const r = createGoal(base, input({ name: ' páginas LEÍDAS ' }), '2026-11-17');
+    expect(r.ok || r.error).toEqual(['name-taken']);
+  });
+
+  test('otras validaciones', () => {
+    const err = (over: Partial<GoalInput>) => {
+      const r = createGoal(st(), input(over), '2026-11-17');
+      return r.ok ? [] : r.error;
+    };
+    expect(err({ name: ' ' })).toContain('name-empty');
+    expect(err({ unit: '' })).toContain('unit-required');
+    expect(err({ target: 0 })).toContain('bad-target');
+    expect(err({ target: null })).toEqual([]);
+    expect(err({ activeDays: [] })).toContain('no-days');
+    expect(err({ reminder: '25:00' })).toContain('bad-reminder');
+    expect(err({ reminder: '08:30' })).toEqual([]);
+  });
+
+  test('CG-24: subir el objetivo "A partir de hoy" no cambia los días pasados', () => {
+    let s = ok(createGoal(st(), input({ target: 5 }), '2026-11-02', 'm1')).state;
+    expect(goalNeedsScope(s.goals[0], input({ target: 10 }), '2026-11-20')).toBe(true);
+    s = ok(updateGoal(s, 'm1', input({ target: 10 }), 'fromToday', '2026-11-20')).state;
+    expect(dailyTarget(s.goals[0], '2026-11-18')).toBe(5);
+    expect(dailyTarget(s.goals[0], '2026-11-20')).toBe(10);
+  });
+
+  test('CG-25: "Siempre" reescribe el historial', () => {
+    let s = ok(createGoal(st(), input({ target: 5 }), '2026-11-02', 'm1')).state;
+    s = ok(updateGoal(s, 'm1', input({ target: 10 }), 'fromToday', '2026-11-10')).state;
+    s = ok(updateGoal(s, 'm1', input({ target: 8 }), 'always', '2026-11-20')).state;
+    expect(s.goals[0].versions).toEqual([{ effectiveFrom: '2026-11-02', target: 8, period: 'day', activeDays: [1, 2, 3, 4, 5] }]);
+    expect(dailyTarget(s.goals[0], '2026-11-04')).toBe(8);
+  });
+
+  test('cambiar nombre, unidad o eventos asociados no crea versiones ni pide alcance', () => {
+    let s = ok(createGoal(st(), input(), '2026-11-02', 'm1')).state;
+    expect(goalNeedsScope(s.goals[0], input({ name: 'Lectura', unit: 'pág.' }), '2026-11-20')).toBe(false);
+    s = ok(updateGoal(s, 'm1', input({ name: 'Lectura', unit: 'pág.' }), 'fromToday', '2026-11-20')).state;
+    expect(s.goals[0]).toMatchObject({ name: 'Lectura', unit: 'pág.' });
+    expect(s.goals[0].versions).toHaveLength(1);
+  });
+
+  test('dos cambios "A partir de hoy" el mismo día dejan una sola versión de ese día', () => {
+    let s = ok(createGoal(st(), input({ target: 5 }), '2026-11-02', 'm1')).state;
+    s = ok(updateGoal(s, 'm1', input({ target: 6 }), 'fromToday', '2026-11-20')).state;
+    s = ok(updateGoal(s, 'm1', input({ target: 7 }), 'fromToday', '2026-11-20')).state;
+    expect(s.goals[0].versions.map((v) => [v.effectiveFrom, v.target])).toEqual([['2026-11-02', 5], ['2026-11-20', 7]]);
+  });
+
+  test('CG-26: archivar la saca de las metas activas y conserva su historial; reactivar', () => {
+    let s = ok(createGoal(st(), input(), '2026-11-02', 'm1')).state;
+    s = ok(setGoalArchived(s, 'm1', true)).state;
+    expect(isActiveOn(s.goals[0], '2026-11-17')).toBe(false);
+    expect(s.goals[0].versions).toHaveLength(1);
+    s = ok(setGoalArchived(s, 'm1', false)).state;
+    expect(isActiveOn(s.goals[0], '2026-11-17')).toBe(true);
+  });
+
+  test('CG-27: eliminar quita la definición (los conteos guardados por día no están en el modelo y no se tocan)', () => {
+    const s = ok(createGoal(st(), input(), '2026-11-02', 'm1')).state;
+    expect(ok(deleteGoal(s, 'm1')).state.goals).toEqual([]);
+    expect(deleteGoal(s, 'nada')).toEqual({ ok: false, error: 'not-found' });
   });
 });

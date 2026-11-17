@@ -1,6 +1,6 @@
 import { defaultBlocks } from '../agenda';
 import { legacyCategory } from '../domain/categories';
-import { ReminderDay, planReminders } from '../reminders';
+import { ReminderDay, planGoalReminders, planReminders } from '../reminders';
 
 const tracked = (c: string) => legacyCategory(c as never).tracked;
 const day = (date: string, blocks: ReminderDay['blocks'] = defaultBlocks('mwf')) => ({ date, dayStartMs: new Date(2026, 10, 16).getTime(), blocks });
@@ -55,5 +55,20 @@ describe('aviso propio por evento', () => {
   test('el aviso propio pisa los ajustes', () => {
     expect(ids({ atStart: false, endLead: 15 })).toEqual(['Quedan 15 min: Correr']);
     expect(ids({ atStart: true, endLead: 0 }, { ...S, notifStart: false })).toEqual(['10:00 · Correr']);
+  });
+});
+
+describe('avisos propios de las metas', () => {
+  test('uno por meta y día, a la hora elegida, sin los que ya pasaron', () => {
+    const start = (d: string) => new Date(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10))).getTime();
+    const items = [
+      { goalId: 'm1', name: 'Páginas leídas', date: '2026-11-17', time: '21:30' },
+      { goalId: 'm1', name: 'Páginas leídas', date: '2026-11-18', time: '21:30' },
+      { goalId: 'm2', name: 'Agua', date: '2026-11-17', time: '08:00' },
+    ];
+    const now = new Date(2026, 10, 17, 12, 0).getTime();
+    const r = planGoalReminders(items, start, now);
+    expect(r.map((x) => x.id)).toEqual(['meta:2026-11-17:m1', 'meta:2026-11-18:m1']);
+    expect(r[0]).toMatchObject({ title: 'Meta: Páginas leídas', at: new Date(2026, 10, 17, 21, 30).getTime(), start: null });
   });
 });

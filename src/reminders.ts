@@ -54,3 +54,18 @@ export function planReminders(
   }
   return out;
 }
+
+/** Avisos propios de las metas (spec 009, 5.1): uno por meta y día en que aplica, a la hora elegida. */
+export function planGoalReminders(
+  items: { goalId: string; name: string; date: string; time: string }[],
+  dayStartMs: (date: string) => number,
+  now: number,
+): Reminder[] {
+  const out: Reminder[] = [];
+  for (const it of items) {
+    const [h, m] = it.time.split(':').map(Number);
+    const at = dayStartMs(it.date) + (h * 60 + m) * 60000;
+    if (at > now) out.push({ id: `meta:${it.date}:${it.goalId}`, at, title: `Meta: ${it.name}`, body: 'Mira cómo vas hoy.', start: null });
+  }
+  return out;
+}

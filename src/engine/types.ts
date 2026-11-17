@@ -7,7 +7,8 @@
 import type { DayType } from '../agenda';
 import type { CategoryError, CategoryOpError, NewCategory } from '../domain/categories';
 import type { EditScope, EventPatch, OpError } from '../domain/events';
-import type { AgendaState, ColorToken, Series } from '../domain/types';
+import type { GoalError, GoalInput, GoalScope } from '../domain/goals';
+import type { AgendaState, ColorToken, GoalVersion, Series } from '../domain/types';
 import type { Settings } from '../storeShape';
 
 /** Un evento ubicado en un día, con los campos cortos que usan las pantallas. `c` es el id de la categoría. */
@@ -122,6 +123,21 @@ export interface AgendaEngine {
 
 export type EventResult = { ok: true; id: string } | { ok: false; error: OpError };
 export type CategoryResult = { ok: true; id: string } | { ok: false; error: CategoryOpError };
+export type GoalResult = { ok: true; id: string } | { ok: false; error: GoalError[] | 'not-found' };
+
+/** Meta tal como la muestra la pantalla de metas. `version` es la vigente hoy. */
+export interface GoalView {
+  id: string;
+  name: string;
+  kind: 'quantity' | 'time' | 'both';
+  unit: string;
+  links: string[];
+  reminder: string | null;
+  archived: boolean;
+  version: GoalVersion;
+  /** Conteos registrados en total (eventos `count` del registro). */
+  counts: number;
+}
 
 /** Operaciones de la spec 009 sobre series (fase 3). */
 export interface EventOps {
@@ -150,6 +166,20 @@ export interface EventOps {
   setCategoryArchived(id: string, archived: boolean): CategoryResult;
   /** Elimina; si la usan eventos, hay que pasar la categoría a la que se reasignan. */
   deleteCategory(id: string, reassignTo: string | null): CategoryResult;
+  /** Metas, también las archivadas (pantalla de metas). */
+  goalsAll(): GoalView[];
+  createGoal(input: GoalInput): GoalResult;
+  updateGoal(id: string, input: GoalInput, scope: GoalScope): GoalResult;
+  /** `true` si el cambio toca objetivo, período o días (hay que elegir alcance). */
+  goalNeedsScope(id: string, input: GoalInput): boolean;
+  setGoalArchived(id: string, archived: boolean): GoalResult;
+  deleteGoal(id: string): GoalResult;
+  /** Metas de cantidad asociadas a un evento (por su id o su id original), para contar dentro del evento en curso. */
+  goalsForSeries(bid: string, date: string): GoalCard[];
+  /** Eventos que se pueden asociar a una meta, con su repetición en palabras para distinguirlos. */
+  linkableSeries(): { id: string; title: string; summary: string }[];
+  /** Avisos propios de las metas en esas fechas: una hora por meta activa ese día. */
+  goalReminders(dates: string[]): { goalId: string; name: string; date: string; time: string }[];
   /** Estado completo, para deshacer. */
   snapshot(): AgendaState;
   restore(snap: AgendaState): void;

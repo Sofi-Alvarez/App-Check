@@ -1,11 +1,25 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { parseISO } from '../agenda';
 import type { Ctx } from '../ctx';
-import { Bar, Card, Label, MONO } from '../ui';
+import type { GoalView } from '../engine/types';
+import { Bar, Btn, Card, Label, MONO } from '../ui';
+import { GoalEditor } from './GoalEditor';
+
+const DAY_INITIALS = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+/** "Cantidad · 5 comentarios por día · L M X V" */
+function goalSummary(g: GoalView): string {
+  const v = g.version;
+  const kind = g.kind === 'quantity' ? 'Cantidad' : g.kind === 'time' ? 'Tiempo' : 'Cantidad y tiempo';
+  const what = v.target == null ? 'sin objetivo' : `${v.target} ${g.kind === 'time' ? 'min' : g.unit}`;
+  const days = [1, 2, 3, 4, 5, 6, 0].filter((d) => v.activeDays.includes(d)).map((d) => DAY_INITIALS[d]).join(' ');
+  return `${kind} · ${what} ${v.period === 'day' ? 'por día' : 'por semana'} · ${days}`;
+}
 
 export function GoalsScreen({ c }: { c: Ctx }) {
   const { theme: t, settings, viewIso, day } = c;
+  const [editing, setEditing] = useState<{ id: string | null } | null>(null);
+  const all = c.engine.events ? c.engine.events.goalsAll() : [];
   const d = parseISO(viewIso);
   const goals = c.engine.goalsFor(viewIso);
   // `c.rev` fuerza a releer el almacenamiento tras cada cambio.
@@ -70,6 +84,24 @@ export function GoalsScreen({ c }: { c: Ctx }) {
           );
         })}
       </Card>
+
+      {c.engine.events ? (
+        <Card t={t} style={{ gap: 10 }}>
+          <Label t={t}>Tus metas</Label>
+          {all.length === 0 ? <Text style={[s.sub, { color: t.muted }]}>Todavía no hay metas.</Text> : null}
+          {[...all.filter((g) => !g.archived), ...all.filter((g) => g.archived)].map((g) => (
+            <Pressable
+              key={g.id} accessibilityRole="button" accessibilityLabel={`Editar meta ${g.name}`} onPress={() => setEditing({ id: g.id })}
+              style={[s.item, { borderColor: t.line, opacity: g.archived ? 0.6 : 1 }]}
+            >
+              <Text style={[s.wLabel, { color: t.fg, fontWeight: '700' }]}>{g.name}{g.archived ? ' · Archivada' : ''}</Text>
+              <Text style={[s.sub, { color: t.muted }]}>{goalSummary(g)}</Text>
+            </Pressable>
+          ))}
+          <Btn t={t} label="+ Nueva meta" onPress={() => setEditing({ id: null })} />
+        </Card>
+      ) : null}
+      {c.engine.events ? <GoalEditor c={c} target={editing} onClose={() => setEditing(null)} /> : null}
     </ScrollView>
   );
 }
@@ -89,5 +121,6 @@ const s = StyleSheet.create({
   stepText: { fontSize: 24, fontWeight: '700', lineHeight: 28 },
   wTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   wLabel: { fontSize: 15 },
+  item: { minHeight: 56, borderWidth: 1, borderRadius: 12, padding: 12, gap: 2 },
   wVal: { fontFamily: MONO, fontSize: 14, fontVariant: ['tabular-nums'] },
 });

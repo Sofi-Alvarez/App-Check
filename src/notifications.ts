@@ -4,7 +4,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { addDays, iso, startOfDayMs } from './agenda';
 import type { AgendaEngine } from './engine/types';
-import { ReminderDay, planReminders } from './reminders';
+import { ReminderDay, planGoalReminders, planReminders } from './reminders';
 import type { Settings, TimerState } from './store';
 
 export const CH_AGENDA = 'agenda';
@@ -183,14 +183,21 @@ export function rescheduleAgenda(engine: AgendaEngine, s: Settings, timer: Timer
       const now = Date.now();
       const today = new Date();
       const days: ReminderDay[] = [];
+      const starts = new Map<string, number>();
       for (let i = 0; i < WINDOW_DAYS; i++) {
         const d = addDays(today, i);
+        starts.set(iso(d), startOfDayMs(d));
         const blocks = engine.blocksFor(iso(d));
         if (blocks && blocks.length) days.push({ date: iso(d), dayStartMs: startOfDayMs(d), blocks });
       }
       const reqs: Notifications.NotificationRequestInput[] = planReminders(days, s, (c) => engine.category(c).tracked, now).map((r) =>
         dateReq(r.id, r.at, r.title, r.body, CH_AGENDA, exact, r.start ? { categoryIdentifier: CATEGORY_BLOCK, data: r.start } : undefined),
       );
+      // Avisos propios de las metas (fase 5).
+      const goalItems = engine.events?.goalReminders([...starts.keys()]) ?? [];
+      for (const r of planGoalReminders(goalItems, (date) => starts.get(date)!, now)) {
+        reqs.push(dateReq(r.id, r.at, r.title, r.body, CH_AGENDA, exact));
+      }
       const renewAt = startOfDayMs(addDays(today, WINDOW_DAYS - 1)) + 9 * 3600000;
       if (renewAt > now) {
         reqs.push(dateReq('renew', renewAt, 'Abre la app', 'Ábrela para renovar los avisos de las próximas dos semanas.', CH_AGENDA, exact));

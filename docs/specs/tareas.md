@@ -260,10 +260,24 @@ Sigue pendiente de la rutina original: la tarjeta "Martes con adscripción" de A
 
 | ID | Tarea | Tamaño | Depende de | Cubre |
 |---|---|---|---|---|
-| T5.1 | **Operaciones puras de metas**: crear, editar con versiones ("A partir de hoy" y "Siempre"), archivar, eliminar, nombre único, meta de tiempo con evento asociado | M | T2.5 | CG-22 a 28 |
-| T5.2 | **Pantalla Metas**: lista con progreso, botón "+ Nueva meta", editor y hoja de alcance con aviso sobre porcentajes pasados | L | T5.1, T4.3 | CG-22 a 28 |
-| T5.3 | **Contadores dentro del evento en curso** (prioridad "Debería"): las metas asociadas aparecen con su botón + en la tarjeta del evento | M | T5.1 | CG-29 |
-| T5.4 | **Datos con metas archivadas y eliminadas**: sus conteos siguen visibles en Datos y en el CSV con el nombre que tenían | S | T5.1, T2.3 | CG-26, CG-27 |
+| T5.1 ✅ | **Operaciones puras de metas**: crear, editar con versiones ("A partir de hoy" y "Siempre"), archivar, eliminar, nombre único, meta de tiempo con evento asociado | M | T2.5 | CG-22 a 28 |
+| T5.2 ✅ | **Pantalla Metas**: lista con progreso, botón "+ Nueva meta", editor y hoja de alcance con aviso sobre porcentajes pasados | L | T5.1, T4.3 | CG-22 a 28 |
+| T5.3 ✅ | **Contadores dentro del evento en curso** (prioridad "Debería"): las metas asociadas aparecen con su botón + en la tarjeta del evento | M | T5.1 | CG-29 |
+| T5.4 ✅ | **Datos con metas archivadas y eliminadas**: sus conteos siguen visibles en Datos y en el CSV con el nombre que tenían | S | T5.1, T2.3 | CG-26, CG-27 |
+
+**Estado de la fase 5 (17/11/2026).** Hecha en código, con 274 pruebas en verde (typecheck, lint y empaquetado para Android también pasan). Solo con el motor v2.
+
+| Tarea | Dónde | Qué quedó |
+|---|---|---|
+| T5.1 | `src/domain/goals.ts` | Crear, editar, archivar, reactivar y eliminar metas. Validación: nombre único entre las activas, unidad para las de cantidad, objetivo mayor que cero o "sin objetivo", al menos un día, y las de tiempo (o cantidad y tiempo) con al menos un evento asociado. Cambiar objetivo, período o días pide alcance: "A partir de hoy" agrega una versión desde hoy; "Siempre" reescribe el historial. Criterios CG-22 a CG-28 |
+| T5.2 | `src/screens/GoalEditor.tsx`, `GoalsScreen.tsx` | En Metas, "Tus metas" con un resumen de cada una ("Cantidad · 5 comentarios por día · L M X V") y "+ Nueva meta". Editor con nombre, qué mide, unidad, objetivo, período, días, eventos asociados (con su repetición en palabras para distinguirlos), aviso propio a una hora, hoja de alcance con aviso sobre los porcentajes pasados, archivar y eliminar con confirmación |
+| T5.3 | `AgendaScreen.tsx` | Dentro del evento en curso (y del que toca ahora) aparecen las metas de cantidad asociadas, con su conteo y botones − y + |
+| T5.4 | `DataScreen.tsx` | Los conteos de cada sesión se muestran con el nombre de la meta (el actual, o el último guardado en el registro si se eliminó) y, en las de cantidad y tiempo, "N en M min" (CG-29). La semana de Datos tiene 7 días con el modelo nuevo |
+
+**También:**
+- Avisos propios de las metas: a la hora elegida, los días en que aplica ("Meta: Páginas leídas · Mira cómo vas hoy.").
+- Totales de la semana: las metas de cantidad y tiempo suman también en cantidad, y las metas de tiempo nuevas suman minutos de sesiones confirmadas. "Proyecto" y "Ejercicio" conservan su cálculo (decisión 3).
+- **Diferencia con la fase 2:** el sábado y el domingo ya no muestran las metas de un día común; muestran las que aplican ese día (las migradas son de lunes a viernes).
 
 **Prueba en el teléfono:** crear una meta de cantidad ("Páginas leídas", 20 por día) y una de cantidad y tiempo asociada a un evento; sumar conteos; cambiar el objetivo con cada alcance y mirar un día pasado; archivar y eliminar.
 

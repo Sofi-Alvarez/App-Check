@@ -11,6 +11,29 @@ import { Bar, Btn, Card, Label, MONO, Pill } from '../ui';
 import { EditTarget, EventEditor } from './EventEditor';
 import { TaskEditor } from './TaskEditor';
 
+/** Contadores de las metas asociadas a un evento, para sumar sin ir a la pestaña Metas (spec 009, 5.4; T5.3). */
+function LinkedCounters({ c, bid }: { c: Ctx; bid: string }) {
+  const t = c.theme;
+  const goals = c.engine.events?.goalsForSeries(bid, c.viewIso) ?? [];
+  if (goals.length === 0) return null;
+  return (
+    <View style={{ gap: 8 }}>
+      {goals.map((g) => {
+        const v = c.day.counts[g.key] ?? 0;
+        const met = g.target != null && v >= g.target;
+        return (
+          <View key={g.key} style={s.counterRow}>
+            <Text style={[s.note, s.flex, { color: t.fg }]}>{g.label}</Text>
+            <Text style={[s.mono, { color: met ? t.ok : t.fg }]}>{v}{g.target != null ? ` / ${g.target}` : ''}</Text>
+            <Pill t={t} label="−" a11y={`Restar ${g.label}`} onPress={() => c.changeCount(g.key, -1)} />
+            <Pill t={t} label="+" a11y={`Sumar ${g.label}`} onPress={() => c.changeCount(g.key, 1)} />
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 const toRef = (day: string, b: EngineBlock) => ({ bid: b.id, day, title: b.t, cat: b.c, planS: b.s, planE: b.e });
 
 export function AgendaScreen({ c }: { c: Ctx }) {
@@ -138,6 +161,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
               <Btn t={t} kind="ghost" label={active.pausedAt ? 'Reanudar' : 'Pausar'} onPress={c.pauseResume} style={s.flex} />
               <Btn t={t} label="Terminar" onPress={c.finishSession} style={s.flex} />
             </View>
+            <LinkedCounters c={c} bid={active.bid} />
             {activeOther && cur && curInfo ? (
               <>
                 <Text style={[s.note, { color: t.muted }]}>
@@ -158,6 +182,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
             </View>
             <Bar t={t} pct={((sec - cur.s * 60) / ((cur.e - cur.s) * 60)) * 100} />
             {cur.n ? <Text style={[s.note, { color: t.muted }]}>{cur.n}</Text> : null}
+            <LinkedCounters c={c} bid={cur.id} />
             {curInfo ? <Btn t={t} label="Empezar" onPress={() => c.startSession(curInfo)} /> : null}
             <Btn t={t} kind="ghost" label="Timer hasta el fin del bloque" onPress={() => c.startTimer((cur.e * 60 - sec) / 60, cur.t)} />
           </>
@@ -289,6 +314,7 @@ const s = StyleSheet.create({
   weekNav7: { gap: 0 },
   days7: { gap: 2 },
   kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  counterRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   navSq: { width: 48, height: 48, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   navBtn: { width: 40, height: 56, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   navText: { fontSize: 26, lineHeight: 30 },

@@ -97,6 +97,12 @@ describe('motores v1 y v2: sin cambios', () => {
     const env = setup();
     for (let d = '2026-11-09'; d <= '2026-11-20'; d = addDaysISO(d, 1)) {
       const kind = env.v1.dayKind(d);
+      // Diferencia aceptada (fase 5): el fin de semana la v1 mostraba las metas de un día común; la v2 muestra las
+      // que aplican ese día (las migradas son de lunes a viernes, así que ninguna).
+      if (kind === null) {
+        expect(env.v2.goalsFor(d)).toEqual([]);
+        continue;
+      }
       const pick = (cards: { key: string; target: number | null }[]) =>
         cards.filter((c) => !(kind === 'tueAds' && c.key === 'apl')).map((c) => [c.key, c.target]);
       expect([d, pick(env.v2.goalsFor(d))]).toEqual([d, pick(env.v1.goalsFor(d))]);

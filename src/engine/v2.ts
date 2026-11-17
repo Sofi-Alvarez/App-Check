@@ -7,12 +7,18 @@ import { KEYS } from '../data/repository';
 import {
   categoryById, categoryUsage, createCategory, deleteCategory, setCategoryArchived, updateCategory,
 } from '../domain/categories';
-import { addDaysISO, weekdayOf } from '../domain/dates';
+import { addDaysISO } from '../domain/dates';
 import {
   allowedDeleteScopes, allowedScopes, createEvent, daysAffected, deleteEvent, editEvent, modifiedDays,
 } from '../domain/events';
 import type { OpResult } from '../domain/events';
-import { dailyTarget, isActiveOn, quantityProgress } from '../domain/goals';
+import {
+  createGoal, dailyTarget, deleteGoal, goalNeedsScope, goalVersionOn, isActiveOn, quantityProgress, setGoalArchived,
+  timeProgress, updateGoal,
+} from '../domain/goals';
+import type { GoalOpResult } from '../domain/goals';
+import { describeRule } from '../domain/describe';
+import { buildSessions } from '../sessions';
 import type { AgendaState, Category } from '../domain/types';
 import type { Settings } from '../storeShape';
 import {
@@ -21,7 +27,7 @@ import {
 } from './legacy-ops';
 import { applyMarginTo, planMarginFor } from './margin';
 import type { CategoryOpResult } from '../domain/categories';
-import type { AgendaEngine, CategoryInfo, CategoryResult, EngineBlock, EventResult, GoalCard, WeekRow } from './types';
+import type { AgendaEngine, CategoryInfo, CategoryResult, EngineBlock, EventResult, GoalCard, GoalResult, WeekRow } from './types';
 
 /** Copia profunda del estado (sin depender de `structuredClone`, que no todas las versiones de Hermes tienen). */
 const structuredCloneState = (s: AgendaState): AgendaState => JSON.parse(JSON.stringify(s));
@@ -41,6 +47,11 @@ export function createV2Engine(repo: Repository, clock: () => Date = () => new D
   const save = (s: AgendaState) => repo.saveAgenda(s);
   const cat = (id: string) => info(categoryById(state().categories, id));
   const commitCat = (r: CategoryOpResult): CategoryResult => {
+    if (!r.ok) return r;
+    save(r.state);
+    return { ok: true, id: r.id };
+  };
+  const commitGoal = (r: GoalOpResult): GoalResult => {
     if (!r.ok) return r;
     save(r.state);
     return { ok: true, id: r.id };
@@ -128,13 +139,11 @@ export function createV2Engine(repo: Repository, clock: () => Date = () => new D
     },
 
     goalsFor(date): GoalCard[] {
-      // Igual que la pantalla actual: el sábado y el domingo muestran las metas de un día común (se evalúan como el
-      // lunes siguiente). Transitorio hasta la fase 5.
-      const wd = weekdayOf(date);
-      const ref = wd === 6 ? addDaysISO(date, 2) : wd === 0 ? addDaysISO(date, 1) : date;
+      // Desde la fase 5 cada meta dice en qué días aplica, también sábado y domingo. (En la fase 2, el fin de semana
+      // mostraba las metas de un día común para imitar la versión vieja.)
       return state()
-        .goals.filter((g) => g.kind !== 'time' && isActiveOn(g, ref))
-        .map((g) => ({ key: g.id, label: g.name, target: dailyTarget(g, ref) }));
+        .goals.filter((g) => g.kind !== 'time' && isActiveOn(g, date))
+        .map((g) => ({ key: g.id, label: g.name, target: dailyTarget(g, date) }));
     },
     goalName: (key) => state().goals.find((g) => g.id === key)?.name ?? key,
 
@@ -144,11 +153,22 @@ export function createV2Engine(repo: Repository, clock: () => Date = () => new D
       const dates = [0, 1, 2, 3, 4].map((i) => iso(addDays(mon, i)));
       const days = new Map(dates.map((d) => [d, repo.loadDayData(d)]));
       const rows: WeekRow[] = st.goals
-        .filter((g) => !g.archived && g.kind === 'quantity')
+        .filter((g) => !g.archived && g.kind !== 'time')
         .map((g) => {
           const p = quantityProgress(g, dates, (d) => days.get(d)!.counts[g.id] ?? 0);
           return { label: g.name, value: p.value, target: p.target, unit: '' };
         });
+      // Metas de tiempo (y la parte de tiempo de "cantidad y tiempo"), salvo "Proyecto" y "Ejercicio", que conservan
+      // el cálculo de la v1 (decisión 3): minutos de sesiones confirmadas de sus eventos asociados.
+      const timeGoals = st.goals.filter((g) => !g.archived && g.kind !== 'quantity' && g.id !== 'proyecto' && g.id !== 'ejercicio');
+      if (timeGoals.length) {
+        const { sessions } = buildSessions(repo.loadAllLog(), clock().getTime());
+        for (const g of timeGoals) {
+          const linked = new Set([...g.links, ...g.links.map((l) => legacyOf(st, l))]);
+          const p = timeProgress(g, dates, sessions, (bid) => linked.has(bid));
+          rows.push({ label: g.kind === 'both' ? `${g.name} (tiempo)` : g.name, value: p.value, target: g.kind === 'both' ? null : p.target, unit: ' min' });
+        }
+      }
       // "Proyecto" y "Ejercicio" conservan el cálculo actual (decisión 3): horas planificadas hechas de los bloques de
       // las categorías de sus eventos asociados, y sesiones de ejercicio marcadas. El cálculo con tiempo real de
       // sesiones (`timeProgress`) queda listo para cuando se decida cambiarlo.
@@ -244,6 +264,45 @@ export function createV2Engine(repo: Repository, clock: () => Date = () => new D
       updateCategory: (id, input) => commitCat(updateCategory(state(), id, input)),
       setCategoryArchived: (id, archived) => commitCat(setCategoryArchived(state(), id, archived)),
       deleteCategory: (id, reassignTo) => commitCat(deleteCategory(state(), id, reassignTo)),
+      goalsAll: () => {
+        const counts = new Map<string, number>();
+        for (const e of repo.loadAllLog()) if (e.kind === 'count' && e.goal) counts.set(e.goal, (counts.get(e.goal) ?? 0) + 1);
+        return state().goals.map((g) => ({
+          id: g.id, name: g.name, kind: g.kind, unit: g.unit, links: g.links, reminder: g.reminder, archived: g.archived,
+          version: goalVersionOn(g, today()), counts: counts.get(g.id) ?? 0,
+        }));
+      },
+      createGoal: (input) => commitGoal(createGoal(state(), input, today())),
+      updateGoal: (id, input, scope) => commitGoal(updateGoal(state(), id, input, scope, today())),
+      goalNeedsScope(id, input) {
+        const g = state().goals.find((x) => x.id === id);
+        return g ? goalNeedsScope(g, input, today()) : false;
+      },
+      setGoalArchived: (id, archived) => commitGoal(setGoalArchived(state(), id, archived)),
+      deleteGoal: (id) => commitGoal(deleteGoal(state(), id)),
+      goalsForSeries(bid, date) {
+        const st = state();
+        const ids = new Set(st.series.filter((s) => s.id === bid || legacyOf(st, s.id) === bid).map((s) => s.id));
+        ids.add(bid);
+        return st.goals
+          .filter((g) => g.kind !== 'time' && !g.archived && g.links.some((l) => ids.has(l)))
+          .map((g) => ({ key: g.id, label: g.name, target: isActiveOn(g, date) ? dailyTarget(g, date) : null }));
+      },
+      linkableSeries() {
+        const t = today();
+        return state()
+          .series.filter((s) => !s.archived && (s.endDate === null || s.endDate >= t) && (s.rule !== null || s.startDate >= t))
+          .map((s) => ({ id: s.id, title: s.title, summary: describeRule(s.rule, s.startDate, s.endDate) }))
+          .sort((a, b) => a.title.localeCompare(b.title) || a.summary.localeCompare(b.summary));
+      },
+      goalReminders(dates) {
+        const out: { goalId: string; name: string; date: string; time: string }[] = [];
+        for (const g of state().goals) {
+          if (!g.reminder || g.archived) continue;
+          for (const d of dates) if (isActiveOn(g, d)) out.push({ goalId: g.id, name: g.name, date: d, time: g.reminder });
+        }
+        return out;
+      },
       snapshot: () => structuredCloneState(state()),
       restore: (snap) => save(snap),
     },

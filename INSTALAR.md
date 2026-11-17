@@ -202,3 +202,30 @@ npx eas-cli@latest update --channel preview --environment preview --message "fas
 4. **Cambiar "Es fija"** en una categoría con eventos: tiene que pedir confirmación diciendo cuántos eventos afecta.
 5. **Intentar eliminar** una categoría en uso: tiene que pedir a cuál pasar sus eventos (o archivarla).
 6. **Archivar** una categoría: deja de aparecer para elegir en el editor, y sus eventos la conservan.
+
+## Fase 5: metas
+
+### Cómo publicarla
+
+```bash
+git pull
+```
+
+```bash
+npm install
+```
+
+```bash
+npx eas-cli@latest update --channel preview --environment preview --message "fase 5: metas"
+```
+
+### Qué probar en el teléfono
+
+1. **Metas → "Tus metas":** aparecen tus metas con un resumen (qué mide, objetivo, días).
+2. **"+ Nueva meta":** crear "Páginas leídas", unidad "páginas", objetivo 20 por día. Tiene que aparecer como contador los días en que aplica.
+3. **Meta de tiempo** sin eventos asociados: no tiene que dejar guardar. Con un evento asociado, sí.
+4. **Subir el objetivo** de una meta: tiene que preguntar "A partir de hoy" o "Siempre". Con "A partir de hoy", los días anteriores conservan el objetivo viejo.
+5. **Asociar una meta a un evento** y, durante ese evento, sumar desde la tarjeta "Ahora" o "En curso" de Agenda.
+6. **Archivar** una meta (deja de verse) y **eliminar** otra (pide confirmación).
+7. **Datos:** los conteos de cada sesión se ven con el nombre de la meta.
+8. **Aviso propio** de una meta a una hora cercana: tiene que sonar.

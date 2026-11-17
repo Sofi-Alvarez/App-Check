@@ -22,7 +22,25 @@ export function DataScreen({ c }: { c: Ctx }) {
   const { sessions, loose } = useMemo(() => buildSessions(events, nowMs), [events, nowMs]);
 
   const mon = mondayOf(parseISO(viewIso));
-  const days = [0, 1, 2, 3, 4].map((i) => iso(addDays(mon, i)));
+  // Con el modelo nuevo puede haber sesiones el fin de semana: la semana tiene 7 días.
+  const days = (c.engine.events ? [0, 1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4]).map((i) => iso(addDays(mon, i)));
+
+  // Nombre de cada meta en los conteos (T5.4): el actual si la meta existe; si no (eliminada), el último nombre que
+  // quedó guardado en el registro; si tampoco, el id.
+  const savedNames = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const e of events) if (e.goal && e.goalName) m[e.goal] = e.goalName;
+    return m;
+  }, [events]);
+  const kinds = useMemo(
+    () => Object.fromEntries((c.engine.events?.goalsAll() ?? []).map((g) => [g.id, g.kind])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `c.rev` relee las metas después de un cambio
+    [c.engine, c.rev],
+  );
+  const goalLabel = (k: string) => {
+    const current = c.engine.goalName(k);
+    return current !== k ? current : savedNames[k] ?? k;
+  };
   const week = sessions.filter((x) => days.includes(x.day));
   const valid = week.filter((x) => x.endedBy !== 'auto_close' && x.endedBy !== 'open');
   const totalMs = valid.reduce((a, x) => a + x.activeMs, 0);
@@ -89,7 +107,9 @@ export function DataScreen({ c }: { c: Ctx }) {
                       {x.pausedMs > 0 ? `, ${Math.round(x.pausedMs / 60000)} min en pausa` : ''}
                     </Text>
                     {counts.length > 0 ? (
-                      <Text style={[s.note, { color: t.fg }]}>{counts.map(([k, v]) => `${k}: ${v}`).join('  ·  ')}</Text>
+                      <Text style={[s.note, { color: t.fg }]}>
+                        {counts.map(([k, v]) => `${goalLabel(k)}: ${v}${kinds[k] === 'both' && x.endedBy !== 'open' ? ` en ${realMin} min` : ''}`).join('  ·  ')}
+                      </Text>
                     ) : null}
                     <Text style={[s.note, { color: x.endedBy === 'auto_close' ? t.warn : t.muted }]}>{ENDED[x.endedBy]}</Text>
                   </Card>
