@@ -142,7 +142,7 @@ Verificación: 132 pruebas (13 de T1.7, incluida una que comprueba que el modo p
 | T2.3 ✅ | **Registro con copias de nombre**: `catName`, `goalName` y título del momento; `bid` = id de la serie. Actualizar `eventsToCsv` con las columnas nuevas | S | T2.1 | CA-17 |
 | T2.4 ✅ | **Avisos con el modelo nuevo**: usar `tracked` en lugar de nombres de categoría, silenciar por id de evento, soportar fin de semana. Extraer la construcción de avisos a una función pura para poder probarla | M | T2.1 | CG-30, CG-31 |
 | T2.5 ✅ | **Motor de progreso de metas** (cantidad, tiempo, ambas, versiones por fecha). Reemplaza `goalsFor`, `GOAL_LABELS` y `weekRows()` | L | T2.1, T1.4 | CA-11 a 15 |
-| T2.6 🔶 preparada | **Prueba del tope de avisos en el Xiaomi** (D2): programar eventos diarios en 14, 7 y 3 días y medir cuántos suenan. Resultado: decidir el largo de la ventana. Es una prueba, no un desarrollo | S | T2.4 | spec 009 decisión 2 |
+| T2.6 ✅ | **Prueba del tope de avisos en el Xiaomi** (D2): programar eventos diarios en 14, 7 y 3 días y medir cuántos suenan. Resultado: decidir el largo de la ventana. Es una prueba, no un desarrollo | S | T2.4 | spec 009 decisión 2 |
 
 **Estado de la fase 2 (17/11/2026).** Hecha en código, con 164 pruebas en verde (typecheck, lint y empaquetado para Android también pasan).
 
@@ -158,7 +158,7 @@ Verificación: 132 pruebas (13 de T1.7, incluida una que comprueba que el modo p
 | T2.3 | El registro guarda `catName` y `goalName` (opcionales: los eventos anteriores no los tienen). El CSV suma dos columnas al final: `categoria_nombre` y `objetivo_nombre` |
 | T2.4 | Avisos desde el motor con un plan puro (`src/reminders.ts`): el botón "Empecé" depende de `tracked`, y funcionan en cualquier día con eventos |
 | T2.5 | Motor de progreso (`src/domain/goals.ts`): cantidad, tiempo con sesiones confirmadas, ambas y versiones por fecha (criterios CA-11 a CA-15). La pantalla de Metas conserva por ahora el cálculo actual de "Proyecto" (horas planificadas hechas) y "Ejercicio" (sesiones marcadas), según la decisión 3 |
-| T2.6 | Ajustes muestra "Avisos programados (próximos 14 días)" y el resultado del último reprogramado (programados de planificados y primer error). Un aviso que falla ya no corta los demás (antes, un error en una tanda de 20 detenía el resto en silencio). Primera lectura en el Xiaomi (17/11): 20 avisos programados contra unos 222 esperados; pendiente distinguir si fue una lectura a mitad del reprogramado o un error real |
+| T2.6 | Ajustes muestra "Avisos programados (próximos 14 días)" y el resultado del último reprogramado (programados de planificados y primer error). Un aviso que falla ya no corta los demás (antes, un error en una tanda de 20 detenía el resto en silencio). En el Xiaomi (17/11): la primera lectura dio 20 (se leyó a mitad del reprogramado) y la segunda **222, exactamente lo calculado** para 10 días hábiles en la ventana de 14 días. El aviso de prueba suena. **Conclusión:** 222 está muy por debajo del tope de unas 500 alarmas de Android, así que la ventana de 14 días se mantiene. Revisar de nuevo si la agenda suma eventos diarios o de fin de semana (fase 3) |
 
 **Prueba de equivalencia** (`src/engine/__tests__/equivalence-test.ts`): el código actual corre sobre un almacén simulado y se compara con el motor v2 desde la misma fixture migrada, día por día del 02/11/2026 al 12/01/2027, sin cambios y después de cada operación (Solo hoy, Siempre, tarea separada, margen, restaurar, mover martes, ajustes, metas y totales). Si se rompe el motor a propósito, la prueba falla.
 
