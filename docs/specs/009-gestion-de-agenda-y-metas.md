@@ -41,7 +41,7 @@ Esta spec toma las ideas, no el código ni el diseño de ninguna de ellas. Loop 
 ## 2. Historias de usuario
 
 1. **Debe.** Como persona con una rutina propia, quiero **crear un evento** con nombre, categoría, día, horario y, si quiero, repetición, para armar mi agenda sin tocar código.
-2. **Debe.** Quiero **editar un evento** y elegir si el cambio vale solo para ese día, para ese día y los siguientes, o para todos, para no cambiar de más.
+2. **Debe.** Quiero **editar un evento** y elegir si el cambio vale "Solo hoy", "A partir de hoy" o "Siempre", para no cambiar de más.
 3. **Debe.** Quiero **eliminar un evento** con las mismas tres opciones, para sacar una actividad que dejé de hacer sin perder el historial.
 4. **Debe.** Quiero **crear, editar y eliminar metas**, con tipo (cantidad, tiempo o ambas), objetivo, unidad y eventos asociados, para medir lo que me importa hoy.
 5. **Debe.** Quiero **crear y editar categorías** con nombre, color y comportamiento, para que la agenda use mis propios rubros.
@@ -58,7 +58,7 @@ Esta spec toma las ideas, no el código ni el diseño de ninguna de ellas. Loop 
 - **Crear:** botón "+" en la pantalla del día. El día preseleccionado es el que se está viendo, sea cual sea (incluido sábado y domingo).
 - **Editar:** tocar un evento abre su editor.
 - **Eliminar:** botón dentro del editor.
-- El día del que se parte (el que se miraba al abrir el editor) se llama aquí **la fecha de referencia**: los alcances "este y los siguientes" se calculan a partir de ella.
+- El día del que se parte (el que se miraba al abrir el editor) se llama aquí **la fecha de referencia**: el alcance "A partir de hoy" se calcula desde ella.
 
 Las pantallas de edición caben en la navegación de tres lugares propuesta en `00-diagnostico-y-flujo.md` (Hoy, Semana, Ajustes). Esta spec no decide la navegación, solo exige que crear y editar sea posible desde la vista del día y que cualquier fecha sea alcanzable.
 
@@ -99,15 +99,22 @@ Si se repite, al guardar aparece una hoja con tres opciones y una explicación d
 
 | Opción | Qué hace | Efecto en los datos (spec 010) |
 |---|---|---|
-| **Solo este día** | Cambia solo la ocurrencia de la fecha de referencia | Crea o actualiza una excepción `modified` para esa fecha |
-| **Este día y los siguientes** | Cambia desde la fecha de referencia en adelante. Los días anteriores quedan como estaban | Cierra la serie original con `endDate` el día anterior y crea una serie nueva desde la fecha de referencia con los cambios |
-| **Todos los días** | Cambia la serie completa, pasada y futura | Actualiza la serie. Las excepciones de días puntuales se conservan |
+| **Solo hoy** | Cambia solo la ocurrencia de la fecha de referencia | Crea o actualiza una excepción `modified` para esa fecha |
+| **A partir de hoy** | Cambia desde la fecha de referencia en adelante. Los días anteriores quedan como estaban | Cierra la serie original con `endDate` el día anterior y crea una serie nueva desde la fecha de referencia con los cambios |
+| **Siempre** | Cambia la serie completa, pasada y futura | Actualiza la serie. Las excepciones de días puntuales se conservan |
+
+**Nombres de las opciones.** Son los que Sofía eligió: "Solo hoy", "A partir de hoy" y "Siempre". "Solo hoy" se conserva del lenguaje actual de la app.
+
+- Cuando la fecha de referencia **no es el día de hoy**, "hoy" se reemplaza por la fecha: "Solo el 24/11" y "A partir del 24/11". "Siempre" no cambia.
+- "A partir de hoy" **no toca los días anteriores**, aunque la fecha de referencia sea pasada.
+- "Siempre" incluye los días pasados de la agenda. Lo ya registrado en Datos no cambia.
+- Se evita el nombre "Todos los días" para este alcance porque ya es una opción de repetición (3.3).
 
 Reglas:
 
-- Si se cambió la **regla de repetición** (días, cada N semanas, fin), la opción "Solo este día" **no está disponible**, porque una sola ocurrencia no puede tener su propia regla.
-- Si se cambió la **fecha** de la ocurrencia con "Solo este día", la ocurrencia original se cancela ese día y se crea un evento de un día en la fecha nueva.
-- Si la fecha de referencia es el primer día de la serie, "Este día y los siguientes" equivale a "Todos los días" y la hoja lo indica en lugar de duplicar la serie.
+- Si se cambió la **regla de repetición** (días, cada N semanas, fin), la opción "Solo hoy" **no está disponible**, porque una sola ocurrencia no puede tener su propia regla.
+- Si se cambió la **fecha** de la ocurrencia con "Solo hoy", la ocurrencia original se cancela ese día y se crea un evento de un día en la fecha nueva.
+- Si la fecha de referencia es el primer día de la serie, "A partir de hoy" equivale a "Siempre" y la hoja lo indica en lugar de duplicar la serie.
 - Las ocurrencias que ya tienen cambios propios (por ejemplo, un margen aplicado ese día) conservan sus campos. La hoja muestra una línea: "N días tienen cambios propios y los mantienen".
 - Los eventos con sesiones registradas se pueden editar. El registro conserva el título, la categoría y el horario que tenían al momento (`title`, `catName`, `planS`, `planE`).
 
@@ -117,9 +124,9 @@ Mismas tres opciones:
 
 | Opción | Efecto |
 |---|---|
-| **Solo este día** | Excepción `cancelled` para esa fecha |
-| **Este día y los siguientes** | La serie termina el día anterior (`endDate`). Si es el primer día, se elimina la serie |
-| **Todos los días** | Se elimina la serie y sus excepciones. Desaparece de la agenda pasada y futura |
+| **Solo hoy** | Excepción `cancelled` para esa fecha |
+| **A partir de hoy** | La serie termina el día anterior (`endDate`). Si es el primer día, se elimina la serie |
+| **Siempre** | Se elimina la serie y sus excepciones. Desaparece de la agenda pasada y futura |
 
 Siempre:
 
@@ -136,7 +143,7 @@ Después de editar o eliminar aparece un aviso con "Deshacer" durante 8 segundos
 
 - Si el horario se pisa con otro evento ese día, se muestra el aviso con los nombres, y se **deja guardar**.
 - El aviso evalúa la fecha de referencia y, para repeticiones, solo las próximas 4 semanas, para que el cálculo sea rápido.
-- Un evento no puede cruzar la medianoche (pregunta abierta 1).
+- Un evento no puede cruzar la medianoche (decisión 1).
 
 ## 4. Gestión de categorías
 
@@ -178,8 +185,8 @@ Cambiar el **objetivo**, el **período** o los **días en que aplica** abre una 
 
 | Opción | Efecto |
 |---|---|
-| **Desde hoy en adelante** (sugerida) | Crea una versión nueva de la meta desde hoy. Los días anteriores se siguen comparando con el objetivo que tenían |
-| **Todos los días, incluso los pasados** | Reescribe el objetivo de todo el historial. La hoja avisa que los porcentajes de días pasados van a cambiar |
+| **A partir de hoy** (sugerida) | Crea una versión nueva de la meta desde hoy. Los días anteriores se siguen comparando con el objetivo que tenían |
+| **Siempre, incluso los días pasados** | Reescribe el objetivo de todo el historial. La hoja avisa que los porcentajes de días pasados van a cambiar |
 
 Las metas usan dos opciones y no tres porque no hay "ocurrencia" de una meta que tenga sentido modificar sola.
 
@@ -223,7 +230,7 @@ Los avisos tienen un tope del sistema (Android ronda las 500 alarmas, iOS 64 pen
 ### 7.2 Fechas
 - Editar un día pasado está permitido. Cambia lo que se muestra en la agenda de ese día, no el registro.
 - Un evento que empieza en una fecha futura no aparece antes de su `startDate`.
-- Editar con "Este día y los siguientes" desde una fecha futura no toca el pasado ni el presente.
+- Editar con "A partir de hoy" desde una fecha futura no toca el pasado ni el presente.
 
 ### 7.3 Interfaz
 - Todos los controles interactivos miden al menos 48 dp.
@@ -248,17 +255,17 @@ Formato dado / cuando / entonces. Cada criterio debe tener una prueba automátic
 - **CG-06** Dado que se pisa con otro evento, cuando guardo, entonces aparece el aviso con los nombres y el evento se guarda igual.
 
 **Editar con alcance**
-- **CG-07** Dado un evento semanal, cuando lo edito con "Solo este día", entonces ese día muestra el cambio y el resto de los días no.
-- **CG-08** Dado un evento semanal que cambié con "Este día y los siguientes" desde el 24/11, entonces el 17/11 tiene los valores originales y el 24/11 en adelante los nuevos.
-- **CG-09** Dado un evento semanal, cuando lo edito con "Todos los días", entonces la agenda pasada y la futura muestran el cambio.
-- **CG-10** Dado que cambié la regla de repetición, cuando se abre la hoja de alcance, entonces "Solo este día" no está disponible.
-- **CG-11** Dado un evento con una excepción de margen el 17/11, cuando edito el título con "Todos los días", entonces el 17/11 muestra el título nuevo y conserva su horario de margen.
-- **CG-12** Dado que la fecha de referencia es el primer día de la serie, cuando elijo "Este día y los siguientes", entonces no se crea una serie duplicada.
+- **CG-07** Dado un evento semanal, cuando lo edito con "Solo hoy", entonces ese día muestra el cambio y el resto de los días no.
+- **CG-08** Dado un evento semanal que cambié con "A partir de hoy" desde el 24/11, entonces el 17/11 tiene los valores originales y el 24/11 en adelante los nuevos.
+- **CG-09** Dado un evento semanal, cuando lo edito con "Siempre", entonces la agenda pasada y la futura muestran el cambio.
+- **CG-10** Dado que cambié la regla de repetición, cuando se abre la hoja de alcance, entonces "Solo hoy" no está disponible.
+- **CG-11** Dado un evento con una excepción de margen el 17/11, cuando edito el título con "Siempre", entonces el 17/11 muestra el título nuevo y conserva su horario de margen.
+- **CG-12** Dado que la fecha de referencia es el primer día de la serie, cuando elijo "A partir de hoy", entonces no se crea una serie duplicada.
 
 **Eliminar**
-- **CG-13** Dado un evento semanal, cuando lo elimino con "Solo este día", entonces desaparece ese día y vuelve a aparecer la semana siguiente.
-- **CG-14** Dado un evento semanal, cuando lo elimino con "Este día y los siguientes", entonces los días anteriores lo conservan.
-- **CG-15** Dado un evento con 5 sesiones registradas, cuando lo elimino con "Todos los días", entonces las 5 sesiones siguen en Datos y en el CSV con su título.
+- **CG-13** Dado un evento semanal, cuando lo elimino con "Solo hoy", entonces desaparece ese día y vuelve a aparecer la semana siguiente.
+- **CG-14** Dado un evento semanal, cuando lo elimino con "A partir de hoy", entonces los días anteriores lo conservan.
+- **CG-15** Dado un evento con 5 sesiones registradas, cuando lo elimino con "Siempre", entonces las 5 sesiones siguen en Datos y en el CSV con su título.
 - **CG-16** Dado un evento con una sesión en curso, cuando intento eliminarlo, entonces la app me pide terminarla y no elimina nada.
 - **CG-17** Dado que acabo de eliminar un evento, cuando toco "Deshacer" dentro de 8 segundos, entonces el evento vuelve con su serie y sus excepciones.
 
@@ -271,8 +278,8 @@ Formato dado / cuando / entonces. Cada criterio debe tener una prueba automátic
 **Metas**
 - **CG-22** Dado que creo una meta de cantidad "Páginas leídas", objetivo 20 por día, cuando sumo 25, entonces el progreso es 25 de 20.
 - **CG-23** Dado una meta de tiempo sin eventos asociados, cuando intento guardar, entonces la app lo exige.
-- **CG-24** Dado que subo el objetivo de 5 a 10 con "Desde hoy en adelante", cuando miro un día pasado con 6 conteos, entonces sigue contando como cumplido.
-- **CG-25** Dado que subo el objetivo con "Todos los días", cuando miro ese día pasado, entonces el progreso se compara con 10 y la hoja había avisado del cambio.
+- **CG-24** Dado que subo el objetivo de 5 a 10 con "A partir de hoy", cuando miro un día pasado con 6 conteos, entonces sigue contando como cumplido.
+- **CG-25** Dado que subo el objetivo con "Siempre", cuando miro ese día pasado, entonces el progreso se compara con 10 y la hoja había avisado del cambio.
 - **CG-26** Dado una meta con conteos registrados, cuando la archivo, entonces desaparece de Metas pero sus conteos siguen en Datos.
 - **CG-27** Dado una meta con conteos, cuando la elimino definitivamente, entonces los eventos `count` siguen en el CSV con el nombre que tenía.
 - **CG-28** Dado dos metas con el mismo nombre, cuando intento guardar la segunda, entonces no guarda.
@@ -286,19 +293,27 @@ Formato dado / cuando / entonces. Cada criterio debe tener una prueba automátic
 ## 9. Fuera de alcance
 
 - Repetición mensual y anual.
-- Eventos que cruzan la medianoche (pregunta abierta 1).
+- Eventos que cruzan la medianoche (decisión 1).
 - Sincronización con calendarios externos y con la nube.
 - Compartir una plantilla con otra persona (solo se pueden aplicar las incluidas en la app).
 - Prioridades, fechas límite y tareas sin hora (bandeja).
 - IA para crear o reordenar eventos.
 - Rediseño de la navegación (Hoy, Semana, Ajustes): se decide aparte.
 
-## 10. Preguntas abiertas
+## 10. Decisiones tomadas (17/11/2026)
 
-1. **¿Necesitás eventos que crucen la medianoche?** (por ejemplo, una guardia de 23:00 a 01:00). Si sí, cambia el modelo de horarios.
+| # | Decisión | Estado |
+|---|---|---|
+| 1 | Los eventos **no cruzan la medianoche** por ahora. Queda fuera de alcance y se reabre solo si aparece la necesidad | Cerrada |
+| 2 | El tope de avisos se **prueba en el Xiaomi** antes de decidir cómo acortar la ventana | Pendiente de prueba |
+| 3 | Vocabulario de alcance: **"Solo hoy", "A partir de hoy" y "Siempre"** | Cerrada |
+| 4 | Almacén actual con capa de acceso, y pasar a tablas después | Cerrada |
+
+## 11. Preguntas abiertas
+
+1. ~~Eventos que cruzan la medianoche~~ Decidido: no por ahora.
 2. **¿"Después de N veces" como fin de repetición?** Está como "Podría". ¿Lo usás?
 3. **¿Duplicar evento o día entero?** Está como "Podría". ¿Te ahorra trabajo real al armar la semana?
-4. **Tope de avisos.** Con eventos diarios la ventana de 14 días puede pasar el tope de alarmas. Opciones: acortar la ventana según la cantidad de eventos, o priorizar los eventos con "Empecé". Hay que decidir y probar en tu Xiaomi.
+4. **Tope de avisos.** Con eventos diarios la ventana de 14 días puede pasar el tope de alarmas. Opciones: acortar la ventana según la cantidad de eventos, o priorizar los eventos con "Empecé". **Se va a probar en el Xiaomi** antes de decidir.
 5. **¿El deshacer debe durar más de 8 segundos o aceptar varios pasos?** Recomendado 8 segundos y un solo paso.
 6. **¿Querés registrar los cambios de agenda en el CSV?** Hoy solo se registra el margen (`margin`). Registrar altas, ediciones y bajas serviría para entender por qué un día cambió, a costa de más filas.
-7. **¿Qué pasa con "Solo hoy" y "Siempre" en el vocabulario?** Esta spec los reemplaza por "Solo este día / Este día y los siguientes / Todos los días". Confirmar que el nuevo lenguaje te resulta claro.

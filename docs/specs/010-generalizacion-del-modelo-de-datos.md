@@ -238,7 +238,7 @@ Formato dado / cuando / entonces. Cada uno debe convertirse en una prueba autom�
 - Una meta asociada a una serie que se elimina: la meta queda sin asociación y pasa a ser global; no se borra.
 - Una categoría eliminada que todavía tiene eventos: no se puede eliminar, se debe reasignar o archivar (detalle en la spec 009).
 - Cambio de huso horario o de horario de verano: las horas son locales y se interpretan en el huso actual del teléfono.
-- Eventos que cruzan la medianoche: quedan fuera de esta versión (pregunta abierta 3).
+- Eventos que cruzan la medianoche: quedan fuera de esta versión (decisión 1).
 
 ## 7. Fuera de alcance
 
@@ -249,11 +249,20 @@ Formato dado / cuando / entonces. Cada uno debe convertirse en una prueba autom�
 - IA de cualquier tipo.
 - iOS.
 
-## 8. Preguntas abiertas
+## 8. Decisiones tomadas (17/11/2026)
+
+| # | Decisión | Estado |
+|---|---|---|
+| 1 | Los eventos **no cruzan la medianoche** por ahora. `startMin` y `endMin` quedan dentro del mismo día | Cerrada |
+| 2 | Almacén actual con capa de acceso, y pasar a tablas después (4.1) | Cerrada |
+| 3 | El tope de avisos se prueba en el Xiaomi (ver spec 009, decisión 2) | Pendiente de prueba |
+| 4 | Vocabulario de alcance: "Solo hoy", "A partir de hoy" y "Siempre" (ver spec 009) | Cerrada |
+
+## 9. Preguntas abiertas
 
 1. **¿La serie es el modelo correcto?** Es el que usan Google Calendar y Structured y permite los tres alcances de edición. La alternativa es mantener "tipos de día" renombrables, que es más simple pero no permite "este y los siguientes".
-2. **¿Almacén actual con capa de acceso o tablas relacionales desde ya?** Recomendado lo primero (4.1).
-3. **¿Eventos que cruzan la medianoche?** (por ejemplo, 23:00 a 01:00). Hoy no existen. Si Sofía los necesita, cambia `startMin` y `endMin`.
+2. ~~Almacén actual o tablas~~ Decidido: almacén actual con capa de acceso.
+3. ~~Eventos que cruzan la medianoche~~ Decidido: no por ahora.
 4. **¿La paleta de colores es cerrada o libre?** Recomendado cerrada, por contraste y accesibilidad.
 5. **¿Cuántas plantillas se incluyen al lanzar?** Mínimo: vacía y la de Sofía como ejemplo.
 6. **¿La meta de tiempo debe contar también bloques sin sesión (solo marcados como hechos)?** Recomendado que no: solo sesiones confirmadas.
