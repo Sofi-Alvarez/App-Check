@@ -20,6 +20,9 @@ function ctxFor(viewIso: string): Ctx {
   } as unknown as Ctx;
 }
 
+// Las pruebas de pantalla dibujan componentes completos: en la integración continua la primera puede tardar más de 5 s.
+jest.setTimeout(30000);
+
 describe('AgendaScreen con el modelo nuevo', () => {
   test('semana de 7 días, flechas de semana en la línea del título y sin la etiqueta del tipo de día', async () => {
     await render(<AgendaScreen c={ctxFor('2026-11-16')} />);

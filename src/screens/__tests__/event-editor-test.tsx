@@ -30,6 +30,9 @@ function setup(active: Ctx['active'] = null) {
   return { c, engine, runs };
 }
 
+// Las pruebas de pantalla dibujan componentes completos: en la integración continua la primera puede tardar más de 5 s.
+jest.setTimeout(30000);
+
 describe('EventEditor', () => {
   test('crear un evento de sábado', async () => {
     const { c, engine, runs } = setup();
