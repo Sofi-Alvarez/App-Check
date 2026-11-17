@@ -20,6 +20,7 @@ import type { GoalOpResult } from '../domain/goals';
 import { describeRule } from '../domain/describe';
 import { buildSessions } from '../sessions';
 import type { AgendaState, Category } from '../domain/types';
+import { S } from '../i18n';
 import type { Settings } from '../storeShape';
 import {
   DEFAULT_TUE_ANCHOR, applyDayList, clearAgenda, dayKindOf, flipTuesdays, legacyOf, listsFromSeries, newTaskId, rebuildRoot,
@@ -166,7 +167,7 @@ export function createV2Engine(repo: Repository, clock: () => Date = () => new D
         for (const g of timeGoals) {
           const linked = new Set([...g.links, ...g.links.map((l) => legacyOf(st, l))]);
           const p = timeProgress(g, dates, sessions, (bid) => linked.has(bid));
-          rows.push({ label: g.kind === 'both' ? `${g.name} (tiempo)` : g.name, value: p.value, target: g.kind === 'both' ? null : p.target, unit: ' min' });
+          rows.push({ label: g.kind === 'both' ? S.goal.timeSuffix(g.name) : g.name, value: p.value, target: g.kind === 'both' ? null : p.target, unit: S.goal.minutesRowUnit });
         }
       }
       // "Proyecto" y "Ejercicio" conservan el cálculo actual (decisión 3): horas planificadas hechas de los bloques de
@@ -196,8 +197,8 @@ export function createV2Engine(repo: Repository, clock: () => Date = () => new D
           }
         }
       }
-      if (proj) rows.push({ label: 'Proyecto', value: Math.round(projDone / 6) / 10, target: Math.round(projTotal / 6) / 10, unit: ' h' });
-      if (ex) rows.push({ label: 'Ejercicio', value: exDone, target: exTotal, unit: ' sesiones' });
+      if (proj) rows.push({ label: S.goal.project, value: Math.round(projDone / 6) / 10, target: Math.round(projTotal / 6) / 10, unit: S.goal.hoursUnit });
+      if (ex) rows.push({ label: S.goal.exercise, value: exDone, target: exTotal, unit: S.goal.sessionsUnit });
       return rows;
     },
 

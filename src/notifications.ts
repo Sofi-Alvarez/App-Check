@@ -4,6 +4,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { addDays, iso, startOfDayMs } from './agenda';
 import type { AgendaEngine } from './engine/types';
+import { S } from './i18n';
 import { ReminderDay, planGoalReminders, planReminders } from './reminders';
 import type { Settings, TimerState } from './store';
 
@@ -27,20 +28,20 @@ Notifications.setNotificationHandler({
 export async function setupChannels() {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(CH_AGENDA, {
-    name: 'Bloques de la agenda',
+    name: S.reminders.channelAgenda,
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 200, 250],
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
   });
   await Notifications.setNotificationChannelAsync(CH_TIMER, {
-    name: 'Timer',
+    name: S.reminders.channelTimer,
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 400, 200, 400, 200, 400],
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
   });
   // Botón "Empecé" en el aviso de inicio de cada bloque. Abre la app para registrar la hora exacta.
   await Notifications.setNotificationCategoryAsync(CATEGORY_BLOCK, [
-    { identifier: START_ACTION, buttonTitle: 'Empecé', options: { opensAppToForeground: true } },
+    { identifier: START_ACTION, buttonTitle: S.reminders.startAction, options: { opensAppToForeground: true } },
   ]);
 }
 
@@ -136,7 +137,7 @@ export async function scheduleTimerAlert(t: TimerState) {
     if (t.endAt <= Date.now()) return;
     const exact = await exactAlarmsGranted();
     await Notifications.scheduleNotificationAsync(
-      dateReq(TIMER_ID, t.endAt, 'Terminó el timer', t.label || 'Enfoque', CH_TIMER, exact),
+      dateReq(TIMER_ID, t.endAt, S.reminders.timerTitle, t.label || S.reminders.timerDefault, CH_TIMER, exact),
     );
   } catch {}
 }
@@ -151,7 +152,7 @@ export async function scheduleTest() {
   try {
     const exact = await exactAlarmsGranted();
     await Notifications.scheduleNotificationAsync(
-      dateReq('test', Date.now() + 5000, 'Aviso de prueba', 'Así van a verse y sonar tus avisos.', CH_AGENDA, exact),
+      dateReq('test', Date.now() + 5000, S.reminders.testTitle, S.reminders.testBody, CH_AGENDA, exact),
     );
   } catch {}
 }
@@ -200,7 +201,7 @@ export function rescheduleAgenda(engine: AgendaEngine, s: Settings, timer: Timer
       }
       const renewAt = startOfDayMs(addDays(today, WINDOW_DAYS - 1)) + 9 * 3600000;
       if (renewAt > now) {
-        reqs.push(dateReq('renew', renewAt, 'Abre la app', 'Ábrela para renovar los avisos de las próximas dos semanas.', CH_AGENDA, exact));
+        reqs.push(dateReq('renew', renewAt, S.reminders.renewTitle, S.reminders.renewBody, CH_AGENDA, exact));
       }
       // Un aviso que falla no corta los demás: se programan todos y se guarda el primer error.
       lastReport = { ...lastReport!, planned: reqs.length };

@@ -1,12 +1,14 @@
+import { S } from './i18n';
 export type Cat = 'rest' | 'health' | 'work' | 'content' | 'project' | 'english' | 'fixed' | 'close';
 export type DayType = 'mwf' | 'fri' | 'tueOff' | 'tueAds' | 'thu';
 export interface Block { id: string; s: number; e: number; t: string; c: Cat; n: string }
 type RawBlock = Omit<Block, 'id'>
 export interface Goal { key: string; label: string; target: number | null }
 
-export const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-export const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-export const INIT = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+// Nombres de días y meses de la interfaz: salen del diccionario (T6.4).
+export const MESES = S.dates.months;
+export const DIAS = S.dates.days;
+export const INIT = S.dates.initials;
 
 export const pad = (n: number) => String(n).padStart(2, '0');
 export const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;

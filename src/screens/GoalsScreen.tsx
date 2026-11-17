@@ -5,15 +5,18 @@ import type { Ctx } from '../ctx';
 import type { GoalView } from '../engine/types';
 import { Bar, Btn, Card, Label, MONO } from '../ui';
 import { GoalEditor } from './GoalEditor';
+import { S } from '../i18n';
 
-const DAY_INITIALS = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+const G = S.goal;
+
+const DAY_INITIALS = S.dates.initials;
 /** "Cantidad · 5 comentarios por día · L M X V" */
 function goalSummary(g: GoalView): string {
   const v = g.version;
-  const kind = g.kind === 'quantity' ? 'Cantidad' : g.kind === 'time' ? 'Tiempo' : 'Cantidad y tiempo';
-  const what = v.target == null ? 'sin objetivo' : `${v.target} ${g.kind === 'time' ? 'min' : g.unit}`;
+  const kind = G.kinds[g.kind];
+  const what = v.target == null ? G.summaryNoTarget : G.summaryTarget(v.target, g.kind === 'time' ? G.minutesUnit : g.unit);
   const days = [1, 2, 3, 4, 5, 6, 0].filter((d) => v.activeDays.includes(d)).map((d) => DAY_INITIALS[d]).join(' ');
-  return `${kind} · ${what} ${v.period === 'day' ? 'por día' : 'por semana'} · ${days}`;
+  return G.summary(kind, what, v.period === 'day', days);
 }
 
 export function GoalsScreen({ c }: { c: Ctx }) {
@@ -28,9 +31,9 @@ export function GoalsScreen({ c }: { c: Ctx }) {
 
   return (
     <ScrollView contentContainerStyle={[s.content, { paddingTop: c.insets.top + 12 }]} showsVerticalScrollIndicator={false}>
-      <Text style={[s.h1, { color: t.fg }]}>Metas</Text>
+      <Text style={[s.h1, { color: t.fg }]}>{G.screenTitle}</Text>
       <Text style={[s.sub, { color: t.muted }]}>
-        Día que estás viendo: {d.getDate()}/{d.getMonth() + 1}. Cambia de día en la pestaña Agenda.
+        {G.viewing(d.getDate(), d.getMonth() + 1)}
       </Text>
 
       <View style={s.grid}>
@@ -46,14 +49,14 @@ export function GoalsScreen({ c }: { c: Ctx }) {
               </View>
               <View style={s.step}>
                 <Pressable
-                  accessibilityLabel={`Restar ${g.label}`}
+                  accessibilityLabel={G.subtract(g.label)}
                   onPress={() => c.changeCount(g.key, -1)}
                   style={[s.stepBtn, { backgroundColor: t.surface2 }]}
                 >
                   <Text style={[s.stepText, { color: t.fg }]}>−</Text>
                 </Pressable>
                 <Pressable
-                  accessibilityLabel={`Sumar ${g.label}`}
+                  accessibilityLabel={G.add(g.label)}
                   onPress={() => c.changeCount(g.key, 1)}
                   style={[s.stepBtn, { backgroundColor: t.surface2 }]}
                 >
@@ -66,7 +69,7 @@ export function GoalsScreen({ c }: { c: Ctx }) {
       </View>
 
       <Card t={t} style={{ gap: 14 }}>
-        <Label t={t}>Totales de la semana</Label>
+        <Label t={t}>{G.weekTotals}</Label>
         {rows.map((r) => {
           const pct = r.target ? Math.min(100, Math.round((r.value / r.target) * 100)) : 0;
           return (
@@ -87,18 +90,18 @@ export function GoalsScreen({ c }: { c: Ctx }) {
 
       {c.engine.events ? (
         <Card t={t} style={{ gap: 10 }}>
-          <Label t={t}>Tus metas</Label>
-          {all.length === 0 ? <Text style={[s.sub, { color: t.muted }]}>Todavía no hay metas.</Text> : null}
+          <Label t={t}>{G.yours}</Label>
+          {all.length === 0 ? <Text style={[s.sub, { color: t.muted }]}>{G.none}</Text> : null}
           {[...all.filter((g) => !g.archived), ...all.filter((g) => g.archived)].map((g) => (
             <Pressable
-              key={g.id} accessibilityRole="button" accessibilityLabel={`Editar meta ${g.name}`} onPress={() => setEditing({ id: g.id })}
+              key={g.id} accessibilityRole="button" accessibilityLabel={G.editA11y(g.name)} onPress={() => setEditing({ id: g.id })}
               style={[s.item, { borderColor: t.line, opacity: g.archived ? 0.6 : 1 }]}
             >
-              <Text style={[s.wLabel, { color: t.fg, fontWeight: '700' }]}>{g.name}{g.archived ? ' · Archivada' : ''}</Text>
+              <Text style={[s.wLabel, { color: t.fg, fontWeight: '700' }]}>{g.name}{g.archived ? G.archivedTag : ''}</Text>
               <Text style={[s.sub, { color: t.muted }]}>{goalSummary(g)}</Text>
             </Pressable>
           ))}
-          <Btn t={t} label="+ Nueva meta" onPress={() => setEditing({ id: null })} />
+          <Btn t={t} label={G.newButton} onPress={() => setEditing({ id: null })} />
         </Card>
       ) : null}
       {c.engine.events ? <GoalEditor c={c} target={editing} onClose={() => setEditing(null)} /> : null}

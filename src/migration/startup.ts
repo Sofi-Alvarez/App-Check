@@ -11,6 +11,7 @@
 // siguiente intento vuelva a empezar.
 
 import type { Repository } from '../data/repository';
+import { S } from '../i18n';
 import { MigrationOutcome, MigrationReport, Mismatch, migrateRepository, migrateV1 } from './v1-to-v2';
 
 export type MigrationMode = 'off' | 'dry-run' | 'apply';
@@ -59,56 +60,40 @@ export interface MigrationView {
   ok: boolean | null;
 }
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const M = S.migration;
 
 function reportDetails(r: MigrationReport): string[] {
-  const d = [
-    `${plural(r.series, 'evento', 'eventos')} en el formato nuevo.`,
-    `${plural(r.verifiedDays, 'día revisado', 'días revisados')}, sin diferencias.`,
-  ];
+  const d = [M.series(r.series), M.verified(r.verifiedDays)];
   const { cancelled, modified } = r.exceptions;
-  if (cancelled + modified + r.oneOff > 0) {
-    d.push(`Cambios de un solo día: ${modified} modificados, ${cancelled} quitados y ${plural(r.oneOff, 'tarea agregada', 'tareas agregadas')}.`);
-  }
-  if (r.split.length) d.push(`Tareas con horarios distintos según el día, separadas en varios eventos: ${r.split.join(', ')}.`);
-  if (r.renamedDone.length) d.push(`Días con marcas de hecho actualizadas: ${r.renamedDone.join(', ')}.`);
-  if (r.ignoredWeekendOverrides.length) d.push(`Ediciones de fin de semana que nunca se mostraron (quedan en la copia): ${r.ignoredWeekendOverrides.join(', ')}.`);
-  if (r.extraCategories.length) d.push(`Categorías desconocidas conservadas como nuevas: ${r.extraCategories.join(', ')}.`);
-  if (r.unknownKeys.length) d.push(`Datos que la app no reconoce (no se tocan): ${r.unknownKeys.join(', ')}.`);
-  if (r.sourceUsed === 'backup') d.push('Se retomó desde la copia guardada en un intento anterior.');
+  if (cancelled + modified + r.oneOff > 0) d.push(M.dayChanges(modified, cancelled, r.oneOff));
+  if (r.split.length) d.push(M.split(r.split.join(', ')));
+  if (r.renamedDone.length) d.push(M.renamedDone(r.renamedDone.join(', ')));
+  if (r.ignoredWeekendOverrides.length) d.push(M.weekend(r.ignoredWeekendOverrides.join(', ')));
+  if (r.extraCategories.length) d.push(M.extraCategories(r.extraCategories.join(', ')));
+  if (r.unknownKeys.length) d.push(M.unknownKeys(r.unknownKeys.join(', ')));
+  if (r.sourceUsed === 'backup') d.push(M.fromBackup);
   return d;
 }
 
 /** Texto para la tarjeta de Ajustes. */
 export function describeMigration(s: StartupMigration): MigrationView {
-  const title = s.mode === 'dry-run' ? 'Formato nuevo de la agenda (prueba)' : 'Formato nuevo de la agenda';
+  const title = s.mode === 'dry-run' ? M.titleTest : M.title;
   if (s.mode === 'off') return { title, message: '', details: [], ok: null };
+  const test = s.mode === 'dry-run';
   switch (s.status) {
     case 'already-migrated':
-      return { title, message: 'Tu agenda ya está en el formato nuevo.', details: [], ok: true };
+      return { title, message: M.already, details: [], ok: true };
     case 'ok':
-      return {
-        title,
-        message: 'Prueba correcta: tu agenda se puede pasar al formato nuevo sin diferencias. Todavía no se cambió nada.',
-        details: reportDetails(s.report),
-        ok: true,
-      };
+      return { title, message: M.okTest, details: reportDetails(s.report), ok: true };
     case 'migrated':
-      return { title, message: 'Tu agenda se pasó al formato nuevo. Tus datos anteriores quedaron guardados en una copia dentro de la app.', details: reportDetails(s.report), ok: true };
+      return { title, message: M.migrated, details: reportDetails(s.report), ok: true };
     case 'refused':
       return {
-        title,
-        message: `${s.mode === 'dry-run' ? 'La prueba' : 'La migración'} encontró diferencias en ${plural(s.mismatches.length, 'día', 'días')}. No se cambió nada: tu agenda sigue igual. Comparte el informe para revisarlo.`,
-        details: s.mismatches.slice(0, 5).map((m) => `${m.date}: antes ${m.v1.length}, después ${m.v2.length} eventos.`),
-        ok: false,
+        title, message: M.refused(test, s.mismatches.length),
+        details: s.mismatches.slice(0, 5).map((m) => M.mismatchLine(m.date, m.v1.length, m.v2.length)), ok: false,
       };
     case 'crashed':
-      return {
-        title,
-        message: `${s.mode === 'dry-run' ? 'La prueba' : 'La migración'} no pudo completarse. No se cambió nada${s.mode === 'apply' ? ' y se vuelve a intentar la próxima vez que abras la app' : ''}. Comparte el informe para revisarlo.`,
-        details: [s.error],
-        ok: false,
-      };
+      return { title, message: M.crashed(test), details: [s.error], ok: false };
   }
 }
 
@@ -118,7 +103,7 @@ export function describeMigration(s: StartupMigration): MigrationView {
  */
 export function migrationReportText(s: StartupMigration, today: string): string {
   const v = describeMigration(s);
-  const lines = [`Informe de migración (${today})`, `Modo: ${s.mode}`, `Estado: ${'status' in s ? s.status : '-'}`, v.message, ...v.details];
+  const lines = [M.reportTitle(today), M.reportMode(s.mode), M.reportStatus('status' in s ? s.status : '-'), v.message, ...v.details];
   if ('status' in s && s.status === 'refused') {
     const short = (rows: string[]) => rows.map((r) => {
       try {
@@ -129,7 +114,7 @@ export function migrationReportText(s: StartupMigration, today: string): string 
       }
     });
     for (const m of s.mismatches.slice(0, 10)) {
-      lines.push(`— ${m.date}`, `  antes: ${short(m.v1).join(', ')}`, `  después: ${short(m.v2).join(', ')}`);
+      lines.push(`— ${m.date}`, M.reportBefore(short(m.v1).join(', ')), M.reportAfter(short(m.v2).join(', ')));
     }
   }
   return lines.join('\n');

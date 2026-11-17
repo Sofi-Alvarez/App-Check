@@ -7,9 +7,12 @@ import {
 import type { Ctx } from '../ctx';
 import type { EngineBlock, TaskDraft } from '../engine/types';
 import { colorFor } from '../theme';
+import { S } from '../i18n';
 import { Bar, Btn, Card, Label, MONO, Pill } from '../ui';
 import { EditTarget, EventEditor } from './EventEditor';
 import { TaskEditor } from './TaskEditor';
+
+const A = S.agenda;
 
 /** Contadores de las metas asociadas a un evento, para sumar sin ir a la pestaña Metas (spec 009, 5.4; T5.3). */
 function LinkedCounters({ c, bid }: { c: Ctx; bid: string }) {
@@ -25,8 +28,8 @@ function LinkedCounters({ c, bid }: { c: Ctx; bid: string }) {
           <View key={g.key} style={s.counterRow}>
             <Text style={[s.note, s.flex, { color: t.fg }]}>{g.label}</Text>
             <Text style={[s.mono, { color: met ? t.ok : t.fg }]}>{v}{g.target != null ? ` / ${g.target}` : ''}</Text>
-            <Pill t={t} label="−" a11y={`Restar ${g.label}`} onPress={() => c.changeCount(g.key, -1)} />
-            <Pill t={t} label="+" a11y={`Sumar ${g.label}`} onPress={() => c.changeCount(g.key, 1)} />
+            <Pill t={t} label="−" a11y={S.goal.subtract(g.label)} onPress={() => c.changeCount(g.key, -1)} />
+            <Pill t={t} label="+" a11y={S.goal.add(g.label)} onPress={() => c.changeCount(g.key, 1)} />
           </View>
         );
       })}
@@ -68,10 +71,10 @@ export function AgendaScreen({ c }: { c: Ctx }) {
           // Con 7 días, las flechas de semana van en esta línea para que los días ocupen todo el ancho.
           <View style={s.kickerRow}>
             <Text style={[s.kicker, s.flex, { color: t.muted }]}>{weekRangeLabel(mon)}</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="Semana anterior" onPress={() => c.setViewIso(iso(addDays(d, -7)))} style={[s.navSq, { backgroundColor: t.surface, borderColor: t.line }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel={A.prevWeek} onPress={() => c.setViewIso(iso(addDays(d, -7)))} style={[s.navSq, { backgroundColor: t.surface, borderColor: t.line }]}>
               <Text style={[s.navText, { color: t.fg }]}>‹</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Semana siguiente" onPress={() => c.setViewIso(iso(addDays(d, 7)))} style={[s.navSq, { backgroundColor: t.surface, borderColor: t.line }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel={A.nextWeek} onPress={() => c.setViewIso(iso(addDays(d, 7)))} style={[s.navSq, { backgroundColor: t.surface, borderColor: t.line }]}>
               <Text style={[s.navText, { color: t.fg }]}>›</Text>
             </Pressable>
           </View>
@@ -84,7 +87,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
         <View style={s.chips}>
           {isToday && (
             <View style={[s.chip, { backgroundColor: t.accent }]}>
-              <Text style={[s.chipText, { color: t.onAccent }]}>Hoy</Text>
+              <Text style={[s.chipText, { color: t.onAccent }]}>{A.today}</Text>
             </View>
           )}
           {type && !v2 && (
@@ -98,7 +101,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
       <View style={[s.weekNav, v2 && s.weekNav7]}>
         {v2 ? null : (
         <Pressable
-          accessibilityLabel="Semana anterior"
+          accessibilityLabel={A.prevWeek}
           onPress={() => c.setViewIso(iso(addDays(d, -7)))}
           style={[s.navBtn, { backgroundColor: t.surface, borderColor: t.line }]}
         >
@@ -113,7 +116,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
             return (
               <Pressable
                 key={id}
-                accessibilityLabel={`${DIAS[x.getDay()]} ${x.getDate()}`}
+                accessibilityLabel={A.dayA11y(DIAS[x.getDay()], x.getDate())}
                 accessibilityState={{ selected: sel }}
                 onPress={() => c.setViewIso(id)}
                 style={[s.dayBtn, { backgroundColor: sel ? t.fg : t.surface, borderColor: sel ? t.fg : t.line }]}
@@ -129,7 +132,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
         </View>
         {v2 ? null : (
         <Pressable
-          accessibilityLabel="Semana siguiente"
+          accessibilityLabel={A.nextWeek}
           onPress={() => c.setViewIso(iso(addDays(d, 7)))}
           style={[s.navBtn, { backgroundColor: t.surface, borderColor: t.line }]}
         >
@@ -141,76 +144,76 @@ export function AgendaScreen({ c }: { c: Ctx }) {
       <Card t={t}>
         {!isToday ? (
           <>
-            <Label t={t}>Vista previa</Label>
+            <Label t={t}>{A.preview}</Label>
             <Text style={[s.note, { color: t.muted }]}>
-              Estás viendo otro día. El reloj en vivo y los avisos siguen la agenda de hoy.
+              {A.previewNote}
             </Text>
           </>
         ) : active ? (
           <>
-            <Label t={t} style={{ color: t.accent }}>{active.pausedAt ? 'En pausa' : 'En curso'}</Label>
+            <Label t={t} style={{ color: t.accent }}>{active.pausedAt ? A.paused : A.running}</Label>
             <Text style={[s.nowTitle, { color: t.fg }]}>{active.title}</Text>
             <Text style={[s.mono, { color: t.muted }]}>
-              {active.planS >= 0 ? `Plan ${hm(active.planS)} a ${hm(active.planE)}` : 'Fuera de la agenda'}
+              {active.planS >= 0 ? A.plan(hm(active.planS), hm(active.planE)) : A.outsideAgenda}
             </Text>
             <View style={s.countRow}>
               <Text style={[s.count, { color: t.fg }]}>{fmtClock(activeMs / 1000)}</Text>
-              <Text style={[s.note, { color: t.muted }]}>de trabajo real</Text>
+              <Text style={[s.note, { color: t.muted }]}>{A.realWork}</Text>
             </View>
             <View style={s.btnRow}>
-              <Btn t={t} kind="ghost" label={active.pausedAt ? 'Reanudar' : 'Pausar'} onPress={c.pauseResume} style={s.flex} />
-              <Btn t={t} label="Terminar" onPress={c.finishSession} style={s.flex} />
+              <Btn t={t} kind="ghost" label={active.pausedAt ? A.resume : A.pause} onPress={c.pauseResume} style={s.flex} />
+              <Btn t={t} label={A.finish} onPress={c.finishSession} style={s.flex} />
             </View>
             <LinkedCounters c={c} bid={active.bid} />
             {activeOther && cur && curInfo ? (
               <>
                 <Text style={[s.note, { color: t.muted }]}>
-                  Según la agenda ahora toca {cur.t}, hasta las {hm(cur.e)}.
+                  {A.nowScheduled(cur.t, hm(cur.e))}
                 </Text>
-                <Btn t={t} kind="ghost" label={`Cambiar a ${cur.t}`} onPress={() => c.startSession(curInfo)} />
+                <Btn t={t} kind="ghost" label={A.switchTo(cur.t)} onPress={() => c.startSession(curInfo)} />
               </>
             ) : null}
           </>
         ) : cur ? (
           <>
-            <Label t={t} style={{ color: t.accent }}>Ahora</Label>
+            <Label t={t} style={{ color: t.accent }}>{A.now}</Label>
             <Text style={[s.nowTitle, { color: t.fg }]}>{cur.t}</Text>
-            <Text style={[s.mono, { color: t.muted }]}>{hm(cur.s)} a {hm(cur.e)}</Text>
+            <Text style={[s.mono, { color: t.muted }]}>{A.range(hm(cur.s), hm(cur.e))}</Text>
             <View style={s.countRow}>
               <Text style={[s.count, { color: t.fg }]}>{fmtClock(cur.e * 60 - sec)}</Text>
-              <Text style={[s.note, { color: t.muted }]}>para terminar</Text>
+              <Text style={[s.note, { color: t.muted }]}>{A.toFinish}</Text>
             </View>
             <Bar t={t} pct={((sec - cur.s * 60) / ((cur.e - cur.s) * 60)) * 100} />
             {cur.n ? <Text style={[s.note, { color: t.muted }]}>{cur.n}</Text> : null}
             <LinkedCounters c={c} bid={cur.id} />
-            {curInfo ? <Btn t={t} label="Empezar" onPress={() => c.startSession(curInfo)} /> : null}
-            <Btn t={t} kind="ghost" label="Timer hasta el fin del bloque" onPress={() => c.startTimer((cur.e * 60 - sec) / 60, cur.t)} />
+            {curInfo ? <Btn t={t} label={A.start} onPress={() => c.startSession(curInfo)} /> : null}
+            <Btn t={t} kind="ghost" label={A.timerToEnd} onPress={() => c.startTimer((cur.e * 60 - sec) / 60, cur.t)} />
           </>
         ) : nextBlock ? (
           <>
-            <Label t={t} style={{ color: t.accent }}>Sigue</Label>
+            <Label t={t} style={{ color: t.accent }}>{A.next}</Label>
             <Text style={[s.nowTitle, { color: t.fg }]}>{nextBlock.t}</Text>
-            <Text style={[s.mono, { color: t.muted }]}>{hm(nextBlock.s)} a {hm(nextBlock.e)}</Text>
+            <Text style={[s.mono, { color: t.muted }]}>{A.range(hm(nextBlock.s), hm(nextBlock.e))}</Text>
             <View style={s.countRow}>
               <Text style={[s.count, { color: t.fg }]}>{fmtClock(nextBlock.s * 60 - sec)}</Text>
-              <Text style={[s.note, { color: t.muted }]}>para empezar</Text>
+              <Text style={[s.note, { color: t.muted }]}>{A.toStart}</Text>
             </View>
             {nextBlock.n ? <Text style={[s.note, { color: t.muted }]}>{nextBlock.n}</Text> : null}
           </>
         ) : (
           <>
-            <Label t={t}>Fin</Label>
-            <Text style={[s.nowTitle, { color: t.fg }]}>Terminó la agenda de hoy</Text>
-            <Text style={[s.note, { color: t.muted }]}>No quedan más eventos por hoy.</Text>
+            <Label t={t}>{A.end}</Label>
+            <Text style={[s.nowTitle, { color: t.fg }]}>{A.dayOver}</Text>
+            <Text style={[s.note, { color: t.muted }]}>{A.noMore}</Text>
           </>
         )}
         {isToday && active?.bid !== 'other' ? (
-          <Btn t={t} kind="ghost" label="Estoy haciendo otra cosa" onPress={() => c.startSession(null)} />
+          <Btn t={t} kind="ghost" label={A.other} onPress={() => c.startSession(null)} />
         ) : null}
       </Card>
 
       <View style={{ gap: 8 }}>
-        <Label t={t}>Línea del día</Label>
+        <Label t={t}>{A.dayLine}</Label>
         <View style={s.legend}>
           {c.engine.legend().map((k) => (
             <View key={k.id} style={s.legendItem}>
@@ -236,7 +239,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
                 </View>
                 <Pressable
                   accessibilityRole="checkbox"
-                  accessibilityLabel={`Marcar hecho: ${b.t}`}
+                  accessibilityLabel={A.markDone(b.t)}
                   accessibilityState={{ checked: done }}
                   hitSlop={8}
                   onPress={() => c.toggleDone(b.id)}
@@ -250,17 +253,17 @@ export function AgendaScreen({ c }: { c: Ctx }) {
                   <View style={s.acts}>
                     <Pill
                       t={t}
-                      label={`Aviso: ${muted ? 'no' : 'sí'}`}
+                      label={A.reminderPill(!muted)}
                       pressed={!muted}
-                      a11y={`Aviso de ${b.t}: ${muted ? 'silenciado' : 'activado'}`}
+                      a11y={A.reminderA11y(b.t, !muted)}
                       onPress={() => c.toggleMute(key)}
                     />
                     {isToday && canPlan ? (
                       <Pill
                         t={t}
-                        label={active?.bid === b.id ? 'En curso' : 'Empezar'}
+                        label={active?.bid === b.id ? A.running : A.start}
                         selected={active?.bid === b.id}
-                        a11y={`Empezar ${b.t}`}
+                        a11y={A.startA11y(b.t)}
                         onPress={() => {
                           if (active?.bid !== b.id) c.startSession(toRef(viewIso, b));
                         }}
@@ -268,12 +271,12 @@ export function AgendaScreen({ c }: { c: Ctx }) {
                     ) : null}
                     <Pill
                       t={t}
-                      label="Editar"
-                      a11y={`Editar ${b.t}`}
+                      label={A.edit}
+                      a11y={A.editA11y(b.t)}
                       onPress={() => (v2 ? setEditing({ id: b.id, refDate: viewIso }) : setDraft({ id: b.id, t: b.t, c: b.c, s: b.s, e: b.e, n: b.n }))}
                     />
                     {noTimer ? null : (
-                      <Pill t={t} label={`Timer ${b.e - b.s} min`} onPress={() => c.startTimer(b.e - b.s, b.t)} />
+                      <Pill t={t} label={A.timerPill(b.e - b.s)} onPress={() => c.startTimer(b.e - b.s, b.t)} />
                     )}
                   </View>
                 </View>
@@ -282,13 +285,13 @@ export function AgendaScreen({ c }: { c: Ctx }) {
           })}
         </View>
         {v2 && blocks.length === 0 ? (
-          <Text style={[s.note, { color: t.muted }]}>No hay eventos este día. Toca “+ Nuevo evento” para agregar uno.</Text>
+          <Text style={[s.note, { color: t.muted }]}>{A.emptyDay}</Text>
         ) : null}
         {canPlan ? (
           <Btn
             t={t}
             kind="ghost"
-            label={v2 ? '+ Nuevo evento' : '+ Nueva tarea'}
+            label={v2 ? A.newEvent : A.newTask}
             onPress={() => {
               const start = isToday ? Math.min(23 * 60, Math.ceil(sec / 900) * 15) : 9 * 60;
               if (v2) setEditing({ id: null, refDate: viewIso, start });

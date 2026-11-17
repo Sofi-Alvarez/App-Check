@@ -6,6 +6,7 @@ import {
   Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { DIAS, MESES, hm, iso, parseISO } from '../agenda';
+import { S } from '../i18n';
 import type { Ctx } from '../ctx';
 import { addDaysISO } from '../domain/dates';
 import { describeRule, scopeHint, scopeLabel } from '../domain/describe';
@@ -27,7 +28,7 @@ export interface EditTarget {
 
 type RepeatMode = 'none' | 'daily' | 'weekly' | 'everyN';
 const WEEK = [1, 2, 3, 4, 5, 6, 0];
-const INITIALS = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+const INITIALS = S.dates.initials;
 
 function parseHm(text: string): number | null {
   const m = /^(\d{1,2}):(\d{2})$/.exec(text.trim());
@@ -38,34 +39,16 @@ function parseHm(text: string): number | null {
 
 const longDate = (date: string) => {
   const d = parseISO(date);
-  return `${DIAS[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`;
+  return S.dates.long(DIAS[d.getDay()], d.getDate(), MESES[d.getMonth()]);
 };
 
-const ERRORS: Record<SeriesError, string> = {
-  'title-empty': 'Escribe un nombre.',
-  'time-out-of-day': 'Las horas tienen que estar dentro del mismo día.',
-  'time-order': 'La hora de fin tiene que ser después de la de inicio.',
-  'too-short': 'El evento tiene que durar al menos 5 minutos.',
-  'bad-start-date': 'La fecha no es válida.',
-  'bad-end-date': 'La fecha de fin no es válida.',
-  'end-before-start': 'La fecha de fin tiene que ser posterior al inicio.',
-  'no-weekdays': 'Elige al menos un día de la semana.',
-  'bad-weekday': 'Revisa los días de la semana elegidos.',
-  'bad-every-weeks': 'Elige cada cuántas semanas se repite.',
-};
-const CATEGORY_ERRORS = {
-  'name-empty': 'Escribe un nombre para la categoría.',
-  'name-too-long': 'El nombre puede tener hasta 30 caracteres.',
-  'name-taken': 'Ya hay una categoría con ese nombre.',
-} as const;
-const COLOR_NAMES: Record<ColorToken, string> = {
-  blue: 'Azul', pink: 'Rosa', teal: 'Verde azulado', green: 'Verde', amber: 'Ámbar', slate: 'Gris azulado', gray: 'Gris',
-};
+const E = S.event;
+const ERRORS: Record<SeriesError, string> = E.errors;
+const CATEGORY_ERRORS = { 'name-empty': S.category.errorEmpty, 'name-too-long': S.category.errorTooLong, 'name-taken': S.category.errorTaken } as const;
+const COLOR_NAMES: Record<ColorToken, string> = S.category.colors;
 
 const opErrorText = (e: OpError) =>
-  e.kind === 'invalid' ? e.errors.map((x) => ERRORS[x]).join(' ')
-    : e.kind === 'scope-not-allowed' ? 'Si cambias la repetición, no se puede elegir "Solo hoy".'
-      : 'No se encontró el evento. Cierra y vuelve a abrirlo.';
+  e.kind === 'invalid' ? e.errors.map((x) => ERRORS[x]).join(' ') : e.kind === 'scope-not-allowed' ? E.scopeNotAllowed : E.notFound;
 
 export function EventEditor({ c, target, onClose }: { c: Ctx; target: EditTarget | null; onClose: () => void }) {
   return (
@@ -121,12 +104,12 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
 
   let formError = '';
   if (!name.trim()) formError = ERRORS['title-empty'];
-  else if (s == null || e == null) formError = 'Escribe las horas como 09:30.';
+  else if (s == null || e == null) formError = E.timesFormat;
   else if (e <= s) formError = ERRORS['time-order'];
   else if (e - s < 5) formError = ERRORS['too-short'];
   else if (rule && rule.weekdays.length === 0) formError = ERRORS['no-weekdays'];
   else if (moving && series && ev.allowedScopes(series.id, target.refDate, patch).length === 0) {
-    formError = 'Para mover un solo día, deja la repetición como estaba.';
+    formError = E.moveNeedsSameRule;
   }
 
   const dayBlocks = c.engine.blocksFor(series?.rule ? moveDate : date) ?? [];
@@ -140,16 +123,16 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
 
   const save = () => {
     if (formError) return;
-    if (isNew) return run(() => ev.create(date, patch), `Se creó "${name.trim()}"`);
+    if (isNew) return run(() => ev.create(date, patch), E.created(name.trim()));
     const scopes = ev.allowedScopes(series!.id, target.refDate, patch);
-    if (scopes.length === 1) return run(() => ev.edit(series!.id, target.refDate, patch, scopes[0]), `Se guardó "${name.trim()}"`);
+    if (scopes.length === 1) return run(() => ev.edit(series!.id, target.refDate, patch, scopes[0]), E.saved(name.trim()));
     setSheet({ action: 'edit', scopes, patch });
   };
 
   const remove = () => {
     if (!series) return;
     if (c.active && (c.active.bid === series.id)) {
-      Alert.alert('Sesión en curso', 'Hay una sesión en curso en este evento. Termínala primero.');
+      Alert.alert(E.activeTitle, E.activeBody);
       return;
     }
     setSheet({ action: 'delete', scopes: ev.allowedDeleteScopes(series.id, target.refDate) });
@@ -158,8 +141,8 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
   const choose = (scope: EditScope) => {
     const sh = sheet!;
     setSheet(null);
-    if (sh.action === 'edit') run(() => ev.edit(series!.id, target.refDate, sh.patch!, scope), `Se guardó "${name.trim()}"`);
-    else run(() => ev.remove(series!.id, target.refDate, scope), `Se eliminó "${series!.title}"`);
+    if (sh.action === 'edit') run(() => ev.edit(series!.id, target.refDate, sh.patch!, scope), E.saved(name.trim()));
+    else run(() => ev.remove(series!.id, target.refDate, scope), E.deleted(series!.title));
   };
 
   const saveCategory = () => {
@@ -181,24 +164,24 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
   return (
     <KeyboardAvoidingView style={[st.root, { backgroundColor: t.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={[st.content, { paddingTop: c.insets.top + 12, paddingBottom: c.insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
-        <Text style={[st.h1, { color: t.fg }]}>{isNew ? 'Nuevo evento' : 'Editar evento'}</Text>
-        {!isNew && series?.rule ? <Text style={[st.note, { color: t.muted }]}>Estás en {longDate(target.refDate)}.</Text> : null}
+        <Text style={[st.h1, { color: t.fg }]}>{isNew ? E.titleNew : E.titleEdit}</Text>
+        {!isNew && series?.rule ? <Text style={[st.note, { color: t.muted }]}>{E.youAreOn(longDate(target.refDate))}</Text> : null}
 
         <View style={{ gap: 6 }}>
-          <Label t={t}>Nombre</Label>
+          <Label t={t}>{E.name}</Label>
           <TextInput
-            value={name} onChangeText={setName} placeholder="Ej.: Lectura" placeholderTextColor={t.muted} maxLength={80}
-            accessibilityLabel="Nombre del evento"
+            value={name} onChangeText={setName} placeholder={E.namePlaceholder} placeholderTextColor={t.muted} maxLength={80}
+            accessibilityLabel={E.nameA11y}
             style={[st.input, { color: t.fg, backgroundColor: t.surface, borderColor: t.line }]}
           />
         </View>
 
         <View style={{ gap: 8 }}>
-          <Label t={t}>Categoría</Label>
+          <Label t={t}>{E.category}</Label>
           <View style={st.pills}>
             {categories.map((k) => (
               <Pressable
-                key={k.id} accessibilityRole="button" accessibilityLabel={`Categoría ${k.name}`} accessibilityState={{ selected: cat === k.id }}
+                key={k.id} accessibilityRole="button" accessibilityLabel={S.category.a11y(k.name)} accessibilityState={{ selected: cat === k.id }}
                 onPress={() => setCat(k.id)}
                 style={[st.catPill, { borderColor: cat === k.id ? t.fg : t.line, backgroundColor: cat === k.id ? t.surface2 : t.surface }]}
               >
@@ -207,33 +190,33 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
               </Pressable>
             ))}
             {!newCat ? (
-              <Pill t={t} label="+ Nueva categoría" onPress={() => setNewCat({ name: '', color: 'blue', movable: true, tracked: true, avoid: false, error: '' })} />
+              <Pill t={t} label={S.category.newPill} onPress={() => setNewCat({ name: '', color: 'blue', movable: true, tracked: true, avoid: false, error: '' })} />
             ) : null}
           </View>
           {newCat ? (
             <View style={[st.box, { borderColor: t.line, backgroundColor: t.surface }]}>
-              <Label t={t}>Nueva categoría</Label>
+              <Label t={t}>{S.category.newTitle}</Label>
               <TextInput
                 value={newCat.name} onChangeText={(v) => setNewCat({ ...newCat, name: v, error: '' })} maxLength={30}
-                placeholder="Ej.: Lectura" placeholderTextColor={t.muted} accessibilityLabel="Nombre de la categoría"
+                placeholder={S.category.namePlaceholder} placeholderTextColor={t.muted} accessibilityLabel={S.category.nameLabel}
                 style={[st.input, { color: t.fg, backgroundColor: t.bg, borderColor: t.line }]}
               />
               <View style={st.pills}>
                 {COLOR_TOKENS.map((tk) => (
                   <Pressable
-                    key={tk} accessibilityRole="button" accessibilityLabel={`Color ${COLOR_NAMES[tk]}`} accessibilityState={{ selected: newCat.color === tk }}
+                    key={tk} accessibilityRole="button" accessibilityLabel={S.category.colorA11y(COLOR_NAMES[tk])} accessibilityState={{ selected: newCat.color === tk }}
                     onPress={() => setNewCat({ ...newCat, color: tk })}
                     style={[st.swatch, { backgroundColor: colorFor(t, tk), borderColor: newCat.color === tk ? t.fg : 'transparent' }]}
                   />
                 ))}
               </View>
-              <Pill t={t} label="Permite empezar y medir" selected={newCat.tracked} onPress={() => setNewCat({ ...newCat, tracked: !newCat.tracked })} />
-              <Pill t={t} label="Es fija: nunca se mueve" selected={!newCat.movable} onPress={() => setNewCat({ ...newCat, movable: !newCat.movable })} />
-              <Pill t={t} label="Evitar para recibir margen" selected={newCat.avoid} onPress={() => setNewCat({ ...newCat, avoid: !newCat.avoid })} />
+              <Pill t={t} label={S.category.tracked} selected={newCat.tracked} onPress={() => setNewCat({ ...newCat, tracked: !newCat.tracked })} />
+              <Pill t={t} label={S.category.fixed} selected={!newCat.movable} onPress={() => setNewCat({ ...newCat, movable: !newCat.movable })} />
+              <Pill t={t} label={S.category.avoid} selected={newCat.avoid} onPress={() => setNewCat({ ...newCat, avoid: !newCat.avoid })} />
               {newCat.error ? <Text style={[st.note, { color: t.warn }]}>{newCat.error}</Text> : null}
               <View style={st.stepRow}>
-                <Btn t={t} kind="ghost" label="Cancelar" onPress={() => setNewCat(null)} style={{ flex: 1 }} />
-                <Btn t={t} label="Crear categoría" onPress={saveCategory} style={{ flex: 1 }} />
+                <Btn t={t} kind="ghost" label={S.common.cancel} onPress={() => setNewCat(null)} style={{ flex: 1 }} />
+                <Btn t={t} label={S.category.create} onPress={saveCategory} style={{ flex: 1 }} />
               </View>
             </View>
           ) : null}
@@ -241,47 +224,47 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
 
         {!series?.rule ? (
           <View style={{ gap: 8 }}>
-            <Label t={t}>{mode === 'none' ? 'Día' : 'Desde'}</Label>
+            <Label t={t}>{mode === 'none' ? E.day : E.since}</Label>
             <View style={st.stepper}>
-              <Pill t={t} label="‹" a11y="Día anterior" onPress={() => setDate(addDaysISO(date, -1))} />
+              <Pill t={t} label="‹" a11y={E.prevDay} onPress={() => setDate(addDaysISO(date, -1))} />
               <Text style={[st.stepText, { color: t.fg }]}>{longDate(date)}</Text>
-              <Pill t={t} label="›" a11y="Día siguiente" onPress={() => setDate(addDaysISO(date, 1))} />
+              <Pill t={t} label="›" a11y={E.nextDay} onPress={() => setDate(addDaysISO(date, 1))} />
             </View>
           </View>
         ) : null}
 
         {series?.rule ? (
           <View style={{ gap: 8 }}>
-            <Label t={t}>Mover este día a otra fecha</Label>
+            <Label t={t}>{E.moveTitle}</Label>
             <View style={st.stepper}>
-              <Pill t={t} label="‹" a11y="Mover un día antes" onPress={() => setMoveDate(addDaysISO(moveDate, -1))} />
+              <Pill t={t} label="‹" a11y={E.moveEarlier} onPress={() => setMoveDate(addDaysISO(moveDate, -1))} />
               <Text style={[st.stepText, { color: t.fg }]}>{longDate(moveDate)}</Text>
-              <Pill t={t} label="›" a11y="Mover un día después" onPress={() => setMoveDate(addDaysISO(moveDate, 1))} />
+              <Pill t={t} label="›" a11y={E.moveLater} onPress={() => setMoveDate(addDaysISO(moveDate, 1))} />
             </View>
             {moving ? (
-              <Text style={[st.note, { color: t.muted }]}>Se moverá solo el {longDate(target.refDate)}. Los demás días quedan igual.</Text>
+              <Text style={[st.note, { color: t.muted }]}>{E.moveNote(longDate(target.refDate))}</Text>
             ) : null}
           </View>
         ) : null}
 
         <View style={st.timeRow}>
-          <TimeField c={c} label="Inicio" text={sText} onChange={setSText} />
-          <TimeField c={c} label="Fin" text={eText} onChange={setEText} />
+          <TimeField c={c} label={E.start} text={sText} onChange={setSText} />
+          <TimeField c={c} label={E.end} text={eText} onChange={setEText} />
         </View>
-        {s != null && e != null && e > s ? <Text style={[st.note, { color: t.muted }]}>Dura {e - s} min.</Text> : null}
+        {s != null && e != null && e > s ? <Text style={[st.note, { color: t.muted }]}>{E.duration(e - s)}</Text> : null}
 
         <View style={{ gap: 6 }}>
-          <Label t={t}>Nota</Label>
+          <Label t={t}>{E.note}</Label>
           <TextInput
-            value={note} onChangeText={setNote} multiline placeholder="Opcional" placeholderTextColor={t.muted}
-            accessibilityLabel="Nota" style={[st.input, st.noteInput, { color: t.fg, backgroundColor: t.surface, borderColor: t.line }]}
+            value={note} onChangeText={setNote} multiline placeholder={E.optional} placeholderTextColor={t.muted}
+            accessibilityLabel={E.note} style={[st.input, st.noteInput, { color: t.fg, backgroundColor: t.surface, borderColor: t.line }]}
           />
         </View>
 
         <View style={{ gap: 8 }}>
-          <Label t={t}>Repetición</Label>
+          <Label t={t}>{E.repeat}</Label>
           <View style={st.pills}>
-            {([['none', 'No se repite'], ['daily', 'Todos los días'], ['weekly', 'Días de la semana'], ['everyN', 'Cada N semanas']] as const).map(([k, label]) => (
+            {([['none', E.repeatNone], ['daily', E.repeatDaily], ['weekly', E.repeatWeekly], ['everyN', E.repeatEveryN]] as const).map(([k, label]) => (
               <Pill key={k} t={t} label={label} selected={mode === k} onPress={() => setMode(k)} />
             ))}
           </View>
@@ -294,23 +277,23 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
           ) : null}
           {mode === 'everyN' ? (
             <View style={st.stepper}>
-              <Pill t={t} label="−" a11y="Menos semanas" onPress={() => setEveryN(Math.max(2, everyN - 1))} />
-              <Text style={[st.stepText, { color: t.fg }]}>Cada {everyN} semanas</Text>
-              <Pill t={t} label="+" a11y="Más semanas" onPress={() => setEveryN(Math.min(8, everyN + 1))} />
+              <Pill t={t} label="−" a11y={E.fewerWeeks} onPress={() => setEveryN(Math.max(2, everyN - 1))} />
+              <Text style={[st.stepText, { color: t.fg }]}>{E.everyNWeeks(everyN)}</Text>
+              <Pill t={t} label="+" a11y={E.moreWeeks} onPress={() => setEveryN(Math.min(8, everyN + 1))} />
             </View>
           ) : null}
           {mode !== 'none' ? (
             <>
-              <Label t={t}>Termina</Label>
+              <Label t={t}>{E.ends}</Label>
               <View style={st.pills}>
-                <Pill t={t} label="Nunca" selected={endDate === null} onPress={() => setEndDate(null)} />
-                <Pill t={t} label="En una fecha" selected={endDate !== null} onPress={() => setEndDate(endDate ?? addDaysISO(startDate, 28))} />
+                <Pill t={t} label={E.never} selected={endDate === null} onPress={() => setEndDate(null)} />
+                <Pill t={t} label={E.onDate} selected={endDate !== null} onPress={() => setEndDate(endDate ?? addDaysISO(startDate, 28))} />
               </View>
               {endDate !== null ? (
                 <View style={st.stepper}>
-                  <Pill t={t} label="‹" a11y="Una semana antes" onPress={() => setEndDate(addDaysISO(endDate, -7))} />
+                  <Pill t={t} label="‹" a11y={E.weekEarlier} onPress={() => setEndDate(addDaysISO(endDate, -7))} />
                   <Text style={[st.stepText, { color: t.fg }]}>{longDate(endDate)}</Text>
-                  <Pill t={t} label="›" a11y="Una semana después" onPress={() => setEndDate(addDaysISO(endDate, 7))} />
+                  <Pill t={t} label="›" a11y={E.weekLater} onPress={() => setEndDate(addDaysISO(endDate, 7))} />
                 </View>
               ) : null}
             </>
@@ -320,31 +303,31 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
 
         {goals.length ? (
           <View style={{ gap: 8 }}>
-            <Label t={t}>Metas asociadas</Label>
+            <Label t={t}>{E.goals}</Label>
             <View style={st.pills}>
               {goals.map((g) => (
-                <Pill key={g.id} t={t} label={g.name} a11y={`Meta ${g.name}`} selected={goalIds.includes(g.id)} onPress={() => toggleGoal(g.id)} />
+                <Pill key={g.id} t={t} label={g.name} a11y={E.goalA11y(g.name)} selected={goalIds.includes(g.id)} onPress={() => toggleGoal(g.id)} />
               ))}
             </View>
           </View>
         ) : null}
 
         <View style={{ gap: 8 }}>
-          <Label t={t}>Aviso</Label>
+          <Label t={t}>{E.reminder}</Label>
           <View style={st.pills}>
-            <Pill t={t} label="Como en Ajustes" selected={reminder === null} onPress={() => setReminder(null)} />
+            <Pill t={t} label={E.reminderDefault} selected={reminder === null} onPress={() => setReminder(null)} />
             <Pill
-              t={t} label="Personalizado" selected={reminder !== null}
+              t={t} label={E.reminderCustom} selected={reminder !== null}
               onPress={() => setReminder(reminder ?? { atStart: c.settings?.notifStart ?? true, endLead: c.settings?.endLead ?? 5 })}
             />
           </View>
           {reminder ? (
             <>
-              <Pill t={t} label="Avisar al empezar" selected={reminder.atStart} onPress={() => setReminder({ ...reminder, atStart: !reminder.atStart })} />
-              <Text style={[st.note, { color: t.fg }]}>Avisar antes de que termine</Text>
+              <Pill t={t} label={E.reminderAtStart} selected={reminder.atStart} onPress={() => setReminder({ ...reminder, atStart: !reminder.atStart })} />
+              <Text style={[st.note, { color: t.fg }]}>{E.reminderBeforeEnd}</Text>
               <View style={st.pills}>
                 {[0, 5, 10, 15].map((m) => (
-                  <Pill key={m} t={t} label={m === 0 ? 'No' : `${m} min`} selected={reminder.endLead === m} onPress={() => setReminder({ ...reminder, endLead: m })} />
+                  <Pill key={m} t={t} label={m === 0 ? E.no : E.minutes(m)} selected={reminder.endLead === m} onPress={() => setReminder({ ...reminder, endLead: m })} />
                 ))}
               </View>
             </>
@@ -355,13 +338,13 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
         {error ? <Text style={[st.note, { color: t.warn }]}>{error}</Text> : null}
         {clash.length ? (
           <Text style={[st.note, { color: t.warn }]}>
-            Se superpone con {clash.map((b) => `${b.t} (${hm(b.s)} a ${hm(b.e)})`).join(', ')}. Puedes guardar igual.
+            {E.overlap(clash.map((b) => E.overlapItem(b.t, hm(b.s), hm(b.e))).join(', '))}
           </Text>
         ) : null}
 
-        <Btn t={t} label="Guardar" disabled={!!formError} onPress={save} />
-        {!isNew ? <Btn t={t} kind="ghost" label="Eliminar evento" onPress={remove} /> : null}
-        <Btn t={t} kind="ghost" label="Cancelar" onPress={onClose} />
+        <Btn t={t} label={S.common.save} disabled={!!formError} onPress={save} />
+        {!isNew ? <Btn t={t} kind="ghost" label={E.deleteEvent} onPress={remove} /> : null}
+        <Btn t={t} kind="ghost" label={S.common.cancel} onPress={onClose} />
       </ScrollView>
 
       <ScopeSheet
@@ -380,20 +363,20 @@ function infoLines(c: Ctx, id: string, refDate: string, action: 'edit' | 'delete
     const all = ev.modifiedDays(id, null);
     const from = ev.modifiedDays(id, refDate);
     return {
-      always: all ? `${all} ${all === 1 ? 'día tiene' : 'días tienen'} cambios propios y los mantienen.` : undefined,
-      fromToday: from ? `${from} ${from === 1 ? 'día tiene' : 'días tienen'} cambios propios y los mantienen.` : undefined,
+      always: all ? E.keepsChanges(all) : undefined,
+      fromToday: from ? E.keepsChanges(from) : undefined,
     };
   }
   const sessions = ev.sessionsFor(id);
   const count = (sc: EditScope) => {
     const n = ev.daysAffected(id, refDate, sc);
-    return n === null ? undefined : `Se quitará de ${n} ${n === 1 ? 'día' : 'días'}.`;
+    return n === null ? undefined : E.removesFrom(n);
   };
   return {
     today: count('today'),
     fromToday: count('fromToday'),
     always: count('always'),
-    all: sessions ? `Tiene ${sessions} ${sessions === 1 ? 'sesión registrada' : 'sesiones registradas'}. Seguirán en Datos y en el CSV.` : undefined,
+    all: sessions ? E.sessions(sessions) : undefined,
   };
 }
 
@@ -409,7 +392,7 @@ function ScopeSheet({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel} statusBarTranslucent>
       <View style={st.backdrop}>
         <View style={[st.sheet, { backgroundColor: t.surface, paddingBottom: c.insets.bottom + 16 }]}>
-          <Text style={[st.sheetTitle, { color: t.fg }]}>{action === 'edit' ? '¿Qué días cambia?' : '¿De qué días lo quitas?'}</Text>
+          <Text style={[st.sheetTitle, { color: t.fg }]}>{action === 'edit' ? E.sheetEdit : E.sheetDelete}</Text>
           {info.all ? <Text style={[st.note, { color: t.muted }]}>{info.all}</Text> : null}
           {scopes.map((sc) => (
             <Pressable
@@ -423,9 +406,9 @@ function ScopeSheet({
             </Pressable>
           ))}
           {action === 'edit' && !scopes.includes('today') ? (
-            <Text style={[st.note, { color: t.muted }]}>Cambiaste la repetición: eso no se puede aplicar a un solo día.</Text>
+            <Text style={[st.note, { color: t.muted }]}>{E.ruleChangedNote}</Text>
           ) : null}
-          <Btn t={t} kind="ghost" label="Cancelar" onPress={onCancel} />
+          <Btn t={t} kind="ghost" label={S.common.cancel} onPress={onCancel} />
         </View>
       </View>
     </Modal>
@@ -447,8 +430,8 @@ function TimeField({ c, label, text, onChange }: { c: Ctx; label: string; text: 
         style={[st.input, st.timeInput, { color: t.fg, backgroundColor: t.surface, borderColor: cur == null ? t.warn : t.line }]}
       />
       <View style={st.stepRow}>
-        <Pill t={t} label="−15" onPress={() => shift(-15)} a11y={`${label} 15 minutos antes`} />
-        <Pill t={t} label="+15" onPress={() => shift(15)} a11y={`${label} 15 minutos después`} />
+        <Pill t={t} label="−15" onPress={() => shift(-15)} a11y={E.minus15(label)} />
+        <Pill t={t} label="+15" onPress={() => shift(15)} a11y={E.plus15(label)} />
       </View>
     </View>
   );

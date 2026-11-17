@@ -5,6 +5,7 @@ import { Alert, AppState, Pressable, StyleSheet, Text, View } from 'react-native
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlockInfo, addDays, iso, parseISO, startOfDayMs } from './src/agenda';
 import type { Ctx } from './src/ctx';
+import { S } from './src/i18n';
 import { expoKV } from './src/data/expoKV';
 import { createRepository } from './src/data/repository';
 import { StartupMigration, describeMigration, runStartupMigration } from './src/migration/startup';
@@ -31,11 +32,11 @@ import { useTheme } from './src/theme';
 
 type Tab = 'agenda' | 'metas' | 'datos' | 'timer' | 'ajustes';
 const TABS: { key: Tab; label: string; glyph: string }[] = [
-  { key: 'agenda', label: 'Agenda', glyph: '☰' },
-  { key: 'metas', label: 'Metas', glyph: '◎' },
-  { key: 'datos', label: 'Datos', glyph: '▤' },
-  { key: 'timer', label: 'Timer', glyph: '◷' },
-  { key: 'ajustes', label: 'Ajustes', glyph: '⚙' },
+  { key: 'agenda', label: S.app.tabs.agenda, glyph: '☰' },
+  { key: 'metas', label: S.app.tabs.metas, glyph: '◎' },
+  { key: 'datos', label: S.app.tabs.datos, glyph: '▤' },
+  { key: 'timer', label: S.app.tabs.timer, glyph: '◷' },
+  { key: 'ajustes', label: S.app.tabs.ajustes, glyph: '⚙' },
 ];
 
 const toRef = (day: string, b: EngineBlock): BlockRef => ({ bid: b.id, day, title: b.t, cat: b.c, planS: b.s, planE: b.e });
@@ -93,7 +94,7 @@ function Root() {
   useEffect(() => {
     if (migration.mode === 'apply' && 'status' in migration && (migration.status === 'refused' || migration.status === 'crashed')) {
       const v = describeMigration(migration);
-      Alert.alert(v.title, `${v.message}\n\nEl detalle está en Ajustes.`);
+      Alert.alert(v.title, `${v.message}\n\n${S.migration.alertSuffix}`);
     }
   }, [migration]);
 
@@ -289,7 +290,7 @@ function Root() {
     } else {
       const total = timer.total || 1500;
       const left = timer.left > 0 ? timer.left : total;
-      const next = { ...timer, total, left, endAt: nowMs + left * 1000, label: timer.label || 'Enfoque' };
+      const next = { ...timer, total, left, endAt: nowMs + left * 1000, label: timer.label || S.reminders.timerDefault };
       commitTimer(next);
       cancelTimerAlert().then(() => scheduleTimerAlert(next));
     }
@@ -322,7 +323,7 @@ function Root() {
       offerMargin(cur, ts);
     }
     const base: BlockInfo = info ?? {
-      bid: 'other', day: iso(new Date(ts)), title: 'Otra cosa', cat: 'other', planS: -1, planE: -1,
+      bid: 'other', day: iso(new Date(ts)), title: S.app.otherThing, cat: 'other', planS: -1, planE: -1,
     };
     const next: ActiveSession = { ...base, startedAt: ts, pausedAt: 0, pausedMs: 0 };
     saveActive(next);
@@ -421,8 +422,8 @@ function Root() {
       {undo ? (
         <View accessibilityLiveRegion="polite" style={[s.undo, { backgroundColor: t.fg }]}>
           <Text style={[s.undoText, { color: t.bg }]} numberOfLines={2}>{undo.label}</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Deshacer" onPress={doUndo} hitSlop={8} style={s.undoBtn}>
-            <Text style={[s.undoAction, { color: t.bg }]}>Deshacer</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={S.common.undo} onPress={doUndo} hitSlop={8} style={s.undoBtn}>
+            <Text style={[s.undoAction, { color: t.bg }]}>{S.common.undo}</Text>
           </Pressable>
         </View>
       ) : null}

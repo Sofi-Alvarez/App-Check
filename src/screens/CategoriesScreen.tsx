@@ -7,25 +7,24 @@ import { COLOR_TOKENS } from '../domain/categories';
 import type { CategoryOpError } from '../domain/categories';
 import type { ColorToken } from '../domain/types';
 import { colorFor } from '../theme';
+import { S } from '../i18n';
 import { Btn, Label, Pill } from '../ui';
 
-const COLOR_NAMES: Record<ColorToken, string> = {
-  blue: 'Azul', pink: 'Rosa', teal: 'Verde azulado', green: 'Verde', amber: 'Ámbar', slate: 'Gris azulado', gray: 'Gris',
-};
-const plural = (n: number) => `${n} ${n === 1 ? 'evento' : 'eventos'}`;
+const K = S.categories;
+const COLOR_NAMES: Record<ColorToken, string> = S.category.colors;
 
 function errorText(e: CategoryOpError): string {
   switch (e.kind) {
     case 'name':
-      return e.error === 'name-empty' ? 'Escribe un nombre.' : e.error === 'name-too-long' ? 'El nombre puede tener hasta 30 caracteres.' : 'Ya hay una categoría activa con ese nombre.';
+      return e.error === 'name-empty' ? K.errorEmpty : e.error === 'name-too-long' ? K.errorTooLong : K.errorTakenActive;
     case 'in-use':
-      return `La usan ${plural(e.events)}. Elige otra categoría para pasarlos, o archívala.`;
+      return K.errorInUse(e.events);
     case 'last-category':
-      return 'Tiene que quedar al menos una categoría activa.';
+      return K.errorLast;
     case 'bad-target':
-      return 'Elige otra categoría activa para pasar los eventos.';
+      return K.errorBadTarget;
     default:
-      return 'No se encontró la categoría.';
+      return K.errorNotFound;
   }
 }
 
@@ -72,29 +71,29 @@ function Manager({ c, onClose }: { c: Ctx; onClose: () => void }) {
   const save = () => {
     if (!draft) return;
     if (!draft.id) {
-      const r = c.runEvent(() => ev.createCategory(input(draft)), `Se creó la categoría "${draft.name.trim()}"`);
+      const r = c.runEvent(() => ev.createCategory(input(draft)), K.created(draft.name.trim()));
       if (!r.ok) return setError(errorText({ kind: 'name', error: r.error }));
       refresh();
       return close();
     }
     const propsChanged = current && (current.movable !== draft.movable || current.tracked !== draft.tracked || (current.marginPreference === 'avoid') !== draft.avoid);
     const doSave = () => {
-      const r = c.runEvent(() => ev.updateCategory(draft.id!, input(draft)), `Se guardó la categoría "${draft.name.trim()}"`);
+      const r = c.runEvent(() => ev.updateCategory(draft.id!, input(draft)), K.saved(draft.name.trim()));
       if (!r.ok) return setError(errorText(r.error));
       refresh();
       close();
     };
     if (propsChanged && current && current.usage > 0) {
-      Alert.alert('Cambia el comportamiento', `Este cambio afecta a ${plural(current.usage)} de esta categoría, desde ahora.`, [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Guardar', onPress: doSave },
+      Alert.alert(K.behaviorTitle, K.behaviorBody(current.usage), [
+        { text: S.common.cancel, style: 'cancel' },
+        { text: S.common.save, onPress: doSave },
       ]);
     } else doSave();
   };
 
   const archive = (archived: boolean) => {
     if (!draft?.id) return;
-    const r = c.runEvent(() => ev.setCategoryArchived(draft.id!, archived), archived ? `Se archivó "${draft.name}"` : `Se reactivó "${draft.name}"`);
+    const r = c.runEvent(() => ev.setCategoryArchived(draft.id!, archived), archived ? K.archived(draft.name) : K.reactivated(draft.name));
     if (!r.ok) return setError(errorText(r.error));
     refresh();
     close();
@@ -108,15 +107,15 @@ function Manager({ c, onClose }: { c: Ctx; onClose: () => void }) {
       return;
     }
     const doDelete = () => {
-      const r = c.runEvent(() => ev.deleteCategory(draft.id!, current.usage > 0 ? reassign : null), `Se eliminó la categoría "${draft.name}"`);
+      const r = c.runEvent(() => ev.deleteCategory(draft.id!, current.usage > 0 ? reassign : null), K.deleted(draft.name));
       if (!r.ok) return setError(errorText(r.error));
       refresh();
       close();
     };
     if (current.usage === 0) {
-      Alert.alert('Eliminar categoría', `¿Eliminar "${current.name}"? No la usa ningún evento.`, [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: doDelete },
+      Alert.alert(K.deleteTitle, K.deleteBody(current.name), [
+        { text: S.common.cancel, style: 'cancel' },
+        { text: S.common.delete, style: 'destructive', onPress: doDelete },
       ]);
     } else doDelete();
   };
@@ -124,16 +123,16 @@ function Manager({ c, onClose }: { c: Ctx; onClose: () => void }) {
   return (
     <KeyboardAvoidingView style={[st.root, { backgroundColor: t.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={[st.content, { paddingTop: c.insets.top + 12, paddingBottom: c.insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
-        <Text style={[st.h1, { color: t.fg }]}>{draft ? (draft.id ? 'Editar categoría' : 'Nueva categoría') : 'Categorías'}</Text>
+        <Text style={[st.h1, { color: t.fg }]}>{draft ? (draft.id ? K.titleEdit : K.titleNew) : K.title}</Text>
 
         {!draft ? (
           <>
             <Text style={[st.note, { color: t.muted }]}>
-              Las categorías dan color a tus eventos y deciden cómo se comportan: si se pueden empezar y medir, si son fijas o si se evitan para recibir margen.
+              {K.intro}
             </Text>
             {all.map((k) => (
               <Pressable
-                key={k.id} accessibilityRole="button" accessibilityLabel={`Editar ${k.name}`}
+                key={k.id} accessibilityRole="button" accessibilityLabel={K.editA11y(k.name)}
                 onPress={() => open({ id: k.id, name: k.name, color: k.color, movable: k.movable, tracked: k.tracked, avoid: k.marginPreference === 'avoid' })}
                 style={[st.row, { borderColor: t.line, backgroundColor: t.surface, opacity: k.archived ? 0.6 : 1 }]}
               >
@@ -141,33 +140,33 @@ function Manager({ c, onClose }: { c: Ctx; onClose: () => void }) {
                 <View style={{ flex: 1 }}>
                   <Text style={[st.rowTitle, { color: t.fg }]}>{k.name}</Text>
                   <Text style={[st.note, { color: t.muted }]}>
-                    {k.archived ? 'Archivada · ' : ''}
-                    {plural(k.usage)}
-                    {!k.movable ? ' · Fija' : ''}
-                    {!k.tracked ? ' · Sin empezar ni medir' : ''}
+                    {k.archived ? K.archivedTag : ''}
+                    {S.common.events(k.usage)}
+                    {!k.movable ? K.fixedTag : ''}
+                    {!k.tracked ? K.untrackedTag : ''}
                   </Text>
                 </View>
               </Pressable>
             ))}
-            <Btn t={t} label="+ Nueva categoría" onPress={() => open({ id: null, name: '', color: 'blue', movable: true, tracked: true, avoid: false })} />
-            <Btn t={t} kind="ghost" label="Volver" onPress={onClose} />
+            <Btn t={t} label={S.category.newPill} onPress={() => open({ id: null, name: '', color: 'blue', movable: true, tracked: true, avoid: false })} />
+            <Btn t={t} kind="ghost" label={S.common.back} onPress={onClose} />
           </>
         ) : (
           <>
             <View style={{ gap: 6 }}>
-              <Label t={t}>Nombre</Label>
+              <Label t={t}>{K.name}</Label>
               <TextInput
                 value={draft.name} onChangeText={(v) => setDraft({ ...draft, name: v })} maxLength={30}
-                placeholder="Ej.: Lectura" placeholderTextColor={t.muted} accessibilityLabel="Nombre de la categoría"
+                placeholder={S.category.namePlaceholder} placeholderTextColor={t.muted} accessibilityLabel={S.category.nameLabel}
                 style={[st.input, { color: t.fg, backgroundColor: t.surface, borderColor: t.line }]}
               />
             </View>
             <View style={{ gap: 8 }}>
-              <Label t={t}>Color</Label>
+              <Label t={t}>{K.color}</Label>
               <View style={st.pills}>
                 {COLOR_TOKENS.map((tk) => (
                   <Pressable
-                    key={tk} accessibilityRole="button" accessibilityLabel={`Color ${COLOR_NAMES[tk]}`} accessibilityState={{ selected: draft.color === tk }}
+                    key={tk} accessibilityRole="button" accessibilityLabel={S.category.colorA11y(COLOR_NAMES[tk])} accessibilityState={{ selected: draft.color === tk }}
                     onPress={() => setDraft({ ...draft, color: tk })}
                     style={[st.swatch, { backgroundColor: colorFor(t, tk), borderColor: draft.color === tk ? t.fg : 'transparent' }]}
                   />
@@ -175,36 +174,36 @@ function Manager({ c, onClose }: { c: Ctx; onClose: () => void }) {
               </View>
             </View>
             <View style={{ gap: 8 }}>
-              <Label t={t}>Comportamiento</Label>
-              <Pill t={t} label="Permite empezar y medir" selected={draft.tracked} onPress={() => setDraft({ ...draft, tracked: !draft.tracked })} />
-              <Pill t={t} label="Es fija: nunca se mueve" selected={!draft.movable} onPress={() => setDraft({ ...draft, movable: !draft.movable })} />
-              <Pill t={t} label="Evitar para recibir margen" selected={draft.avoid} onPress={() => setDraft({ ...draft, avoid: !draft.avoid })} />
+              <Label t={t}>{K.behavior}</Label>
+              <Pill t={t} label={S.category.tracked} selected={draft.tracked} onPress={() => setDraft({ ...draft, tracked: !draft.tracked })} />
+              <Pill t={t} label={S.category.fixed} selected={!draft.movable} onPress={() => setDraft({ ...draft, movable: !draft.movable })} />
+              <Pill t={t} label={S.category.avoid} selected={draft.avoid} onPress={() => setDraft({ ...draft, avoid: !draft.avoid })} />
             </View>
 
-            {current ? <Text style={[st.note, { color: t.muted }]}>La usan {plural(current.usage)}.</Text> : null}
+            {current ? <Text style={[st.note, { color: t.muted }]}>{K.usedBy(current.usage)}</Text> : null}
             {error ? <Text style={[st.note, { color: t.warn }]}>{error}</Text> : null}
 
             {showReassign && current ? (
               <View style={[st.box, { borderColor: t.line, backgroundColor: t.surface }]}>
-                <Label t={t}>Pasar sus eventos a</Label>
+                <Label t={t}>{K.moveTo}</Label>
                 <View style={st.pills}>
                   {all.filter((x) => !x.archived && x.id !== current.id).map((x) => (
-                    <Pill key={x.id} t={t} label={x.name} a11y={`Pasar a ${x.name}`} selected={reassign === x.id} onPress={() => setReassign(x.id)} />
+                    <Pill key={x.id} t={t} label={x.name} a11y={K.moveToA11y(x.name)} selected={reassign === x.id} onPress={() => setReassign(x.id)} />
                   ))}
                 </View>
-                <Btn t={t} label="Pasar y eliminar" disabled={!reassign} onPress={remove} />
-                {!current.archived ? <Btn t={t} kind="ghost" label="Archivar en su lugar" onPress={() => archive(true)} /> : null}
+                <Btn t={t} label={K.moveAndDelete} disabled={!reassign} onPress={remove} />
+                {!current.archived ? <Btn t={t} kind="ghost" label={K.archiveInstead} onPress={() => archive(true)} /> : null}
               </View>
             ) : null}
 
-            <Btn t={t} label={draft.id ? 'Guardar' : 'Crear categoría'} onPress={save} />
+            <Btn t={t} label={draft.id ? S.common.save : S.category.create} onPress={save} />
             {current && !showReassign ? (
               <>
-                <Btn t={t} kind="ghost" label={current.archived ? 'Reactivar' : 'Archivar'} onPress={() => archive(!current.archived)} />
-                <Btn t={t} kind="ghost" label="Eliminar categoría" onPress={remove} />
+                <Btn t={t} kind="ghost" label={current.archived ? S.common.reactivate : S.common.archive} onPress={() => archive(!current.archived)} />
+                <Btn t={t} kind="ghost" label={K.deleteCategory} onPress={remove} />
               </>
             ) : null}
-            <Btn t={t} kind="ghost" label="Cancelar" onPress={close} />
+            <Btn t={t} kind="ghost" label={S.common.cancel} onPress={close} />
           </>
         )}
       </ScrollView>

@@ -5,6 +5,7 @@
 // categoría no fuera `fixed` ni `rest`), y sirve para cualquier día de la semana que tenga eventos.
 
 import { hm } from './agenda';
+import { S } from './i18n';
 
 export interface ReminderDay {
   date: string;
@@ -39,7 +40,7 @@ export function planReminders(
         const at = d.dayStartMs + b.s * 60000;
         if (at > now) {
           out.push({
-            id: `ag:${d.date}:s${j}`, at, title: `${hm(b.s)} · ${b.t}`, body: b.n || `Hasta las ${hm(b.e)}`,
+            id: `ag:${d.date}:s${j}`, at, title: S.reminders.startTitle(hm(b.s), b.t), body: b.n || S.reminders.startBody(hm(b.e)),
             start: tracked(b.c) ? { bid: b.id, day: d.date } : null,
           });
         }
@@ -47,7 +48,7 @@ export function planReminders(
       if (endLead > 0 && b.e - b.s >= 30) {
         const at = d.dayStartMs + (b.e - endLead) * 60000;
         if (at > now) {
-          out.push({ id: `ag:${d.date}:e${j}`, at, title: `Quedan ${endLead} min: ${b.t}`, body: `Termina a las ${hm(b.e)}`, start: null });
+          out.push({ id: `ag:${d.date}:e${j}`, at, title: S.reminders.endTitle(endLead, b.t), body: S.reminders.endBody(hm(b.e)), start: null });
         }
       }
     });
@@ -65,7 +66,7 @@ export function planGoalReminders(
   for (const it of items) {
     const [h, m] = it.time.split(':').map(Number);
     const at = dayStartMs(it.date) + (h * 60 + m) * 60000;
-    if (at > now) out.push({ id: `meta:${it.date}:${it.goalId}`, at, title: `Meta: ${it.name}`, body: 'Mira cómo vas hoy.', start: null });
+    if (at > now) out.push({ id: `meta:${it.date}:${it.goalId}`, at, title: S.reminders.goalTitle(it.name), body: S.reminders.goalBody, start: null });
   }
   return out;
 }

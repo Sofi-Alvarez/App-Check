@@ -4,7 +4,10 @@ import { hm } from '../agenda';
 import { MIN_TASK } from '../engine/margin';
 import type { MarginPlan } from '../engine/types';
 import type { Theme } from '../theme';
+import { S } from '../i18n';
 import { Btn, MONO } from '../ui';
+
+const M = S.margin;
 
 interface Props {
   t: Theme;
@@ -32,12 +35,12 @@ function Sheet({ t, plan, bottomInset, onApply, onSkip }: Props & { plan: Margin
     <View style={s.backdrop}>
       <View style={[s.sheet, { backgroundColor: t.surface, paddingBottom: bottomInset + 16 }]}>
         <Text style={[s.title, { color: t.fg }]}>
-          {early ? `Terminaste ${min} min antes` : `Te pasaste ${min} min`}
+          {early ? M.early(min) : M.late(min)}
         </Text>
         <Text style={[s.note, { color: t.muted }]}>
           {early
-            ? `${plan.aTitle} terminó antes de lo planificado. ¿A qué tarea de hoy pasan esos minutos?`
-            : `${plan.aTitle} duró más de lo planificado. ¿De qué tarea de hoy se descuentan?`}
+            ? M.earlyBody(plan.aTitle)
+            : M.lateBody(plan.aTitle)}
         </Text>
 
         <ScrollView style={s.list} contentContainerStyle={{ gap: 8 }}>
@@ -48,7 +51,7 @@ function Sheet({ t, plan, bottomInset, onApply, onSkip }: Props & { plan: Margin
                 key={o.id}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: on, disabled: !o.ok }}
-                accessibilityLabel={`${o.title}, ${hm(o.newS)} a ${hm(o.newE)}`}
+                accessibilityLabel={M.optionA11y(o.title, hm(o.newS), hm(o.newE))}
                 disabled={!o.ok}
                 onPress={() => setPicked(o.id)}
                 style={[
@@ -58,9 +61,9 @@ function Sheet({ t, plan, bottomInset, onApply, onSkip }: Props & { plan: Margin
               >
                 <Text style={[s.optTitle, { color: t.fg }]}>{o.title}</Text>
                 <Text style={[s.optTime, { color: t.muted }]}>
-                  {hm(o.newS)} a {hm(o.newE)}  ·  antes {hm(o.oldS)} a {hm(o.oldE)}
+                  {M.optionTimes(hm(o.newS), hm(o.newE), hm(o.oldS), hm(o.oldE))}
                 </Text>
-                {!o.ok ? <Text style={[s.optTime, { color: t.warn }]}>Quedaría de menos de {MIN_TASK} min.</Text> : null}
+                {!o.ok ? <Text style={[s.optTime, { color: t.warn }]}>{M.tooShort(MIN_TASK)}</Text> : null}
               </Pressable>
             );
           })}
@@ -68,11 +71,11 @@ function Sheet({ t, plan, bottomInset, onApply, onSkip }: Props & { plan: Margin
 
         <Btn
           t={t}
-          label={chosen ? `Aplicar a ${chosen.title}` : 'Aplicar'}
+          label={chosen ? M.applyTo(chosen.title) : M.apply}
           disabled={!chosen}
           onPress={() => chosen && onApply(chosen.id)}
         />
-        <Btn t={t} kind="ghost" label="Dejar como está" onPress={onSkip} />
+        <Btn t={t} kind="ghost" label={M.skip} onPress={onSkip} />
       </View>
     </View>
   );
