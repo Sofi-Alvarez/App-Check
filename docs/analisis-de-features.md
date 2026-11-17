@@ -1,0 +1,142 @@
+# Análisis de features: lo que tengo, lo que me falta y lo que nadie ofrece
+
+Fecha: 17/11/2026. Base: código de `main` (Expo / React Native, unas 2.450 líneas), `RESUMEN-03-11-2026.md`, `docs/00-diagnostico-y-flujo.md`, `docs/MODELO-DE-PRODUCTO.md` y dos rondas de investigación de competencia.
+
+**Posicionamiento (aclarado el 17/11/2026).** La app es una **agenda general**, no una agenda de búsqueda de empleo. La rutina de búsqueda que hoy trae es solo el contenido que Sofía cargó. Si sus tareas cambian, la app tiene que seguir funcionando con otros eventos y otras metas. Esto reemplaza la recomendación de "empezar vertical" de `MODELO-DE-PRODUCTO.md` (sección 2.2): la opción B (horizontal) pasa a ser la base. Consecuencia: el competidor real son los planificadores generales (Sunsama, Structured, Tiimo, Marvin), no los trackers de empleo.
+
+**Cómo leerlo.** "Ninguna app" significa que no lo encontré en las fuentes revisadas, no que esté demostrado que no exista. Las fuentes son reseñas y blogs, muchos de competidores. Los puntos marcados con (?) hay que confirmarlos probando la app.
+
+Apps comparadas: Sunsama, Toggl Track, Structured, Tiimo, Motion, Reclaim, Akiflow, Amazing Marvin, Loop Habit Tracker, y trackers de empleo (Huntr, Teal, Careerflow).
+
+---
+
+## 1. Features que YA tengo
+
+| # | Feature | Dónde está | ¿Lo tienen otras apps? |
+|---|---|---|---|
+| 1 | Agenda semanal de lunes a viernes con bloques de tiempo | `AgendaScreen`, `agenda.ts` | Sí, todas |
+| 2 | Bloques fijos que nunca se mueven | `schedule.ts` | Parcial (calendarios los tienen, sin la regla de "nunca se mueven solos") |
+| 3 | Categorías de tareas con color | `agenda.ts` (`Cat`) | Sí, Tiimo y Structured |
+| 4 | Crear y editar tareas, "solo hoy" o "siempre", aviso de superposición, restaurar agenda | `TaskEditor`, `schedule.ts` | Sí (editar); "solo hoy / siempre" es común en calendarios |
+| 5 | Sesiones con Empezar, Pausar/Reanudar y Terminar | `sessions.ts`, `AgendaScreen` | Sí, Sunsama y Toggl |
+| 6 | Empezar la siguiente tarea cierra la anterior | `App.tsx` | Parcial (?) |
+| 7 | "Estoy haciendo otra cosa" | `AgendaScreen` | No lo encontré |
+| 8 | Cierre automático de sesiones olvidadas, marcado como "cerrada sola" y fuera de los totales | `store.ts` (`auto_close`) | No lo encontré |
+| 9 | Metas con contadores (+ y −) | `GoalsScreen` | Parcial (Loop tiene hábitos numéricos) |
+| 10 | Timer aparte con aviso | `TimerScreen` | Sí, Structured, Tiimo y Marvin |
+| 11 | Avisos de inicio y de pre-fin de bloque | `notifications.ts` | Sí |
+| 12 | Botón "Empecé" dentro del aviso | `notifications.ts` (`START_ACTION`) | No lo encontré |
+| 13 | Margen de tiempo: lo que sobra o falta pasa a otra tarea elegida, sin cruzar bloques fijos | `MarginPrompt`, `schedule.ts` (`planMargin`, `applyMargin`) | Parcial: Motion y Structured reagendan, pero solos y sin que elijas |
+| 14 | Registro de eventos con hora (start, pause, resume, finish, count, done, undone, margin) | `store.ts` | No lo encontré |
+| 15 | Pestaña de datos con tiempo real vs. planificado, pausas y conteos | `DataScreen` | Sí, Sunsama y Toggl |
+| 16 | Exportar a CSV | `sessions.ts` (`eventsToCsv`) | Parcial: Loop y Habito lo tienen; Sunsama y Motion, no lo encontré |
+| 17 | Datos locales, sin cuenta ni internet | `store.ts` | Parcial: Loop lo tiene; casi todas las demás no |
+| 18 | Actualizaciones por internet (EAS Update) | `app.json`, `eas.json` | No aplica al usuario |
+| 19 | Recurrencia "martes con adscripción cada 14 días" | `agenda.ts` | Parcial: está escrita en el código, no es una regla editable |
+
+### Lo que hoy está atado a tu rutina (hay que generalizar)
+
+Verificado en `src/agenda.ts`:
+
+| Qué está fijo en el código | Dónde | Qué debería ser |
+|---|---|---|
+| 8 categorías cerradas (`rest`, `health`, `work`, `content`, `project`, `english`, `fixed`, `close`) | tipo `Cat` | Categorías que cada persona crea, nombra y colorea |
+| 5 tipos de día (`mwf`, `fri`, `tueOff`, `tueAds`, `thu`) con nombres como "Mar con adscripción" | tipo `DayType`, `TYPE_LABEL`, `LIST_LABEL` | Plantillas de día que el usuario crea y asigna a los días que quiera |
+| Regla de recurrencia escrita a mano (martes cada 14 días, con fecha ancla) | `dayType()` | Reglas editables: días de la semana, cada N semanas, fecha de inicio |
+| Solo lunes a viernes: sábado y domingo devuelven `null` | `dayType()` | Cualquier día de la semana |
+| Metas fijas (post, comentarios, reacciones, cold outreach, follow-up, postulaciones) | `G_BASE`, `G_ADS`, `G_THU`, `GOAL_LABELS` | Metas que el usuario define: nombre, tipo (tiempo o cantidad), objetivo y a qué bloque se asocian |
+| Textos de la agenda de búsqueda de empleo ("/jobs", "Tracker", LinkedIn) | `agenda.ts`, notas de cada bloque | Contenido de ejemplo en una plantilla, no código |
+| Ancla de fecha fija `2026-11-03` | `DEFAULT_SETTINGS` en `store.ts` | Fecha que elige quien configura la recurrencia |
+
+La parte de **motor** (sesiones, eventos, margen, avisos, exportación) ya es genérica. Lo atado a tu rutina es el **contenido** y las reglas de recurrencia.
+
+---
+
+## 2. Features que NO tengo y otras apps SÍ
+
+Ordenadas por cuántas apps lo ofrecen y por cuánto podrían servirle a tu producto.
+
+| # | Feature | Quién lo tiene | ¿Encaja con tu producto? |
+|---|---|---|---|
+| 1 | **Sincronizar con Google Calendar, Outlook e iCloud** | Casi todas (Structured, Motion, Reclaim, Morgen, Akiflow) | Alto. Te evita duplicar compromisos |
+| 2 | **Cuenta, respaldo en la nube y varios dispositivos** | Casi todas | Alto. Hoy se pierde todo al desinstalar. Choca con "local primero", se resuelve con sincronización opcional |
+| 3 | **Reagendado automático con IA** cuando algo cambia | Motion, Reclaim, Structured (Replan, Pro) | Medio. Tu margen es manual a propósito (decisión tuya) |
+| 4 | **Prioridades y fechas límite** por tarea | Motion, Reclaim, Todoist | Medio. Tu agenda es por bloques fijos, no por lista de pendientes |
+| 5 | **Bandeja de tareas sin hora** (backlog) que se arrastran al calendario | Sunsama, Akiflow, Toggl, Structured | Medio. Hoy toda tarea tiene hora |
+| 6 | **Estimar duración y avisar de sobrecarga del día** | Sunsama | Alto y barato: ya tenés duraciones de bloque |
+| 7 | **Ritual de planificación y cierre del día** | Sunsama; en tu v2 ya está en el flujo | Alto, ya figura en tu propuesta de flujo |
+| 8 | **Partir una tarea en pasos con IA** | Tiimo | Bajo para búsqueda de empleo |
+| 9 | **Rachas de hábitos y estadísticas visuales** (gráficos) | Loop, Marvin, TickTick | Medio. Tu pestaña Datos es una tabla |
+| 10 | **Plantillas y onboarding** para armar la semana propia | Varias (?) | Alto. Ya está planeado como spec 008 |
+| 11 | **Días no laborables** (sábado y domingo) | Todas | Medio. Hoy solo hay lunes a viernes |
+| 12 | **Recurrencias editables** (cada N semanas, días elegidos) | Todas | Alto. Hoy están escritas en el código |
+| 13 | **Widgets, pantalla bloqueada y reloj** | Tiimo (cuenta regresiva en reloj y pantalla bloqueada), Structured | Medio. Ayuda a tu problema de avisos en Xiaomi |
+| 14 | **iOS** | Todas | Decisión de fase 5 |
+| 15 | **Seguimiento de postulaciones** (kanban, contactos, CV) | Huntr, Teal, Careerflow | Medio. Podría ser integración con tu Tracker de Notion, no reemplazo |
+| 16 | **Estrategias configurables** (más de 50) | Amazing Marvin | Bajo. Es lo opuesto a tu "un toque" |
+| 17 | **Coach con check-ins de mañana y noche** | Rocky.ai | Medio. Es el candidato para tu "ayuda a priorizar" |
+| 18 | **Programación según energía** | Marvin, Lifestack | Bajo por ahora |
+
+---
+
+## 3. Features que QUIERO y ninguna app tiene (según lo que encontré)
+
+| # | Feature | Por qué parece un diferencial |
+|---|---|---|
+| 1 | **Reparto del margen a una tarea elegida por vos**, sin mover bloques fijos | Las apps que reagendan lo hacen solas. Ninguna te deja decidir de dónde sale o adónde va el tiempo |
+| 2 | **Metas por tiempo Y por cantidad en el mismo bloque** ("5 comentarios y en cuánto tiempo") | Los timers miden tiempo, los hábitos miden cantidad. No vi una que mida las dos cosas dentro de un bloque de agenda |
+| 3 | **Datos confirmados separados de los automáticos** | El cambio automático se ve pero no cuenta como dato real. No lo vi en ninguna. Es el principio 4 de tu constitución |
+| 4 | **Empezar una sesión con un toque desde el aviso** | Toggl la inicia desde el bloque dentro de la app. No vi hacerlo desde el aviso |
+| 5 | **Registro de eventos con hora como base** (se calculan después cosas que hoy no sabés que querés medir) | Las demás guardan resultados, no eventos. Exportar es limitado |
+| 6 | **Cuotas diarias medibles dentro de cualquier bloque**, definidas por la persona (hoy son comentarios y contactos; mañana pueden ser páginas leídas, series de ejercicio o llamadas) | Es la versión general del punto 2. Los planificadores no tienen contadores por bloque; Loop tiene contadores pero no agenda |
+| 7 | **Todo lo anterior, local, sin cuenta y exportable** | Solo Loop es local, y no tiene agenda |
+
+Nota: el punto "agenda para búsqueda de empleo" ya no es un diferencial. Con enfoque general, ese espacio lo ocupan Sunsama, Structured y Tiimo, y la ventaja pasa a ser el motor (puntos 1 a 5).
+| 8 | **Revisión semanal con IA sobre tus datos medidos** (propuesta mía, no pedida por vos) | Motion, Structured y Tiimo usan IA para planificar. No vi ninguna que analice tiempos reales y cumplimiento de metas para decirte qué ajustar |
+
+El punto 8 es una idea nueva, no algo que ya hayas pedido: ver `MODELO-DE-PRODUCTO.md`, sección 2.3 (H2: "si cambiaste decisiones por los datos").
+
+---
+
+## 4. Decisiones que salen de esto
+
+0. **Generalizar antes que agregar.** Con el enfoque general, lo primero es separar motor y contenido: categorías, tipos de día, recurrencias y metas pasan a ser datos que el usuario crea (ver la tabla de la sección 1). Sin eso, ninguna otra feature sirve para alguien con otra rutina, incluida Sofía si cambia sus tareas.
+1. **Núcleo diferencial a proteger:** los puntos 1, 2, 3 y 5 de la sección 3. Son lo que justifica una app propia.
+2. **Lo que conviene copiar sin culpa** (es práctica común y no es de nadie): sincronización de calendarios, estimación de carga del día, ritual de cierre, plantillas de semana, recurrencias editables.
+3. **Lo que conviene NO copiar:** estrategias configurables al estilo Marvin y auto-agendado de Motion. Chocan con "registrar cuesta un toque".
+4. **A validar antes de construir:** que el margen elegible y la meta doble se usan de verdad (hipótesis H2 y H3 de tu documento de producto).
+
+## 5. Límites del análisis
+
+- No instalé ni probé ninguna app. Todo sale de reseñas, comparativas y páginas de ayuda.
+- No hay datos de Habitify, Streaks, Timeular ni Clockify.
+- No investigué apps en español ni con precios para Argentina.
+- Sin confirmar (?): si Amazing Marvin tiene contadores por cantidad; si Sunsama incluye time tracking en todos sus planes; cómo se comporta cada app en Xiaomi.
+
+---
+
+## 6. Gestión de eventos y metas: quién la tiene mejor desarrollada
+
+Agregado el 17/11/2026. Pregunta: qué app tiene mejor resuelto crear, editar y borrar eventos y metas.
+
+**Estado actual de la app (verificado en el código).** Las tareas se pueden crear, editar y eliminar con dos alcances ("Solo hoy" y "Siempre"), pero solo dentro de 5 tipos de día y 8 categorías cerradas. Las metas no se pueden crear, editar ni borrar: solo tienen los botones + y −.
+
+| App | Eventos repetidos: editar y borrar | Fuente |
+|---|---|---|
+| **Google Calendar** | Tres alcances, al editar y al borrar: solo este, este y los siguientes, todos. Cambiar la regla de repetición se aplica a la serie o a "este y los siguientes" | [Ayuda oficial](https://support.google.com/calendar/answer/37115?hl=en&co=GENIE.Platform%3DAndroid) |
+| **Structured** | Tres alcances: solo esta, esta y las siguientes, todas. Es una agenda por bloques, la más parecida a la tuya | [Editar y borrar tareas](https://help.structured.app/en/articles/3320002) |
+| **Sunsama** | "Edit task series", "Stop repeating" y "Delete all instances" | [Recurring tasks](https://www.sunsama.com/pro-tips/recurring-tasks-refresher) |
+| **TickTick** | Reglas de repetición flexibles y calendario coloreado por lista, etiqueta o prioridad | [Features](https://ticktick.com/features?language=en_us) |
+
+| App | Metas | Fuente |
+|---|---|---|
+| **Loop Habit Tracker** | Hábitos medibles con unidad y objetivo diario, frecuencia diaria, semanal o mensual y personalizada, y aviso propio. Gratis, local y de código abierto. Una reseña dice que ya no permite fijar la unidad objetivo; otras fuentes dicen que sí (sin confirmar) | [Repositorio](https://github.com/iSoron/uhabits) |
+| **Habitify** | Objetivo medible por hábito y horarios diarios, semanales o personalizados | [Comparativa](https://griply.app/compare/best-habit-tracker-apps) |
+| **TickTick** | Hábitos con "Goal". No pude confirmar objetivo numérico | [Ayuda](https://help.ticktick.com/articles/7055781805944733696) |
+
+**Conclusión.** Para eventos, el mejor modelo es el de **Google Calendar y Structured** (tres alcances). Para metas, el de **Loop**. Ninguna app junta agenda por bloques con metas por bloque, que es el hueco de esta app.
+
+Las specs que salen de esto:
+
+- `docs/specs/010-generalizacion-del-modelo-de-datos.md`: categorías, series de eventos, excepciones, recurrencias, metas con versiones y plantillas.
+- `docs/specs/009-gestion-de-agenda-y-metas.md`: crear, editar y eliminar con alcance, categorías y metas, con criterios de aceptación.
