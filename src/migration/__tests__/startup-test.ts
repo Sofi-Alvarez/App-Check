@@ -7,8 +7,8 @@ import { MIGRATION_MODE, describeMigration, migrationReportText, runStartupMigra
 const TODAY = '2026-11-17';
 
 describe('runStartupMigration', () => {
-  test('el modo activo es "prueba" hasta la entrega E2', () => {
-    expect(MIGRATION_MODE).toBe('dry-run');
+  test('el modo activo es "aplicar" desde la entrega E2b', () => {
+    expect(MIGRATION_MODE).toBe('apply');
   });
 
   test('en modo prueba no escribe absolutamente nada y informa el resultado', () => {

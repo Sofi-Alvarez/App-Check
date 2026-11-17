@@ -168,6 +168,8 @@ Verificación: 132 pruebas (13 de T1.7, incluida una que comprueba que el modo p
 3. "Postulaciones" aparece también los martes con adscripción (decisión 2).
 4. Si se mueven los martes con cambios "Solo hoy" en un martes, esos cambios quedan en el martes que ya no corresponde (en la v1 seguían en ese día). Caso raro.
 
+**E2b activado (17/11/2026).** Sofía confirmó que los avisos reales suenan con el teléfono bloqueado y subió una copia nueva a Drive. La copia se validó con `parseBackupParts` (21 claves, completa) y la migración corrida sobre ella dio lo mismo que la prueba en el teléfono (66 series, 72 días verificados, sin casos especiales). `MIGRATION_MODE` pasó a `'apply'`. Pendiente: publicar y revisar en el teléfono.
+
 **Publicación en dos pasos (recomendado):**
 - **E2a, ahora:** esta versión con la migración todavía en modo prueba. La app sigue con el motor v1; cambian por dentro los avisos, el registro con nombres, el CSV y el contador de avisos. Sirve para la prueba del tope (T2.6) y para comprobar que nada visible cambió.
 - **E2b, después:** copia de seguridad nueva en Drive, cambiar `MIGRATION_MODE` a `'apply'` y publicar. Ahí migra de verdad y pasa al motor v2. Revisar tres días con registro.

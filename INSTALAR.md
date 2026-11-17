@@ -122,3 +122,30 @@ npx eas-cli@latest update --channel preview --environment preview --message "fas
 4. **Ajustes → Permisos:** anota el número de **"Avisos programados (próximos 14 días)"**.
 5. **Prueba del tope de avisos (T2.6):** deja el teléfono bloqueado y fíjate si suenan los avisos de las próximas horas (inicio y "quedan 5 min").
 6. Pásale a Claude el número de avisos programados y si sonaron.
+
+## Fase 2, paso E2b: migración real al formato nuevo
+
+Esta actualización **sí cambia cómo se guardan tus datos**. Antes de publicarla tiene que haber una copia de seguridad guardada en Drive (la del 17/11 a las 17:55 ya está validada).
+
+### Cómo publicarla
+
+```bash
+git pull
+```
+
+```bash
+npm install
+```
+
+```bash
+npx eas-cli@latest update --channel preview --environment preview --message "fase 2: migración al formato nuevo"
+```
+
+### Qué revisar en el teléfono
+
+1. Cierra y abre la app dos veces.
+2. **Ajustes:** la tarjeta "Formato nuevo de la agenda" tiene que decir en verde **"Tu agenda se pasó al formato nuevo"**. Si dice otra cosa (naranja), no toques nada y comparte el informe.
+3. **Ajustes → Permisos:** "Último reprogramado" tiene que decir alrededor de **222 de 223 avisos, sin errores**.
+4. **Agenda:** revisa tres días con registro (por ejemplo, un lunes, un martes y un jueves de las últimas dos semanas): mismas tareas, mismos horarios y mismas marcas de hecho que antes.
+5. **Metas** y **Datos:** mismos números y mismas sesiones.
+6. Usa la app normalmente un día: empezar, terminar, un conteo y, si se da, un margen.

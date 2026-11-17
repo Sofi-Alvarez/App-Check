@@ -15,8 +15,11 @@ import { MigrationOutcome, MigrationReport, Mismatch, migrateRepository, migrate
 
 export type MigrationMode = 'off' | 'dry-run' | 'apply';
 
-/** Modo activo. Pasa a `apply` en la entrega E2 (fases 1 y 2 juntas). */
-export const MIGRATION_MODE: MigrationMode = 'dry-run';
+/**
+ * Modo activo. `apply` desde la entrega E2b (17/11/2026), después de validar la migración con los datos reales en modo
+ * prueba y con una copia de seguridad completa guardada en Drive.
+ */
+export const MIGRATION_MODE: MigrationMode = 'apply';
 
 export type StartupMigration =
   | { mode: 'off' }
