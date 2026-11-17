@@ -231,3 +231,61 @@ npx eas-cli@latest update --channel preview --environment preview --message "fas
 6. **Archivar** una meta (deja de verse) y **eliminar** otra (pide confirmación).
 7. **Datos:** los conteos de cada sesión se ven con el nombre de la meta.
 8. **Aviso propio** de una meta a una hora cercana: tiene que sonar.
+
+## Fase 6: publicación (T6.5) y pasada final (T6.6)
+
+**T6.5:** la fase 6 se publicó el 17/11 como actualización por internet sobre la versión 1.1.0. No hizo falta un APK nuevo porque no se sumaron librerías con código nativo.
+
+**T6.6: pasada final en el teléfono.** Lleva unos 30 minutos. Usa eventos, categorías y metas de prueba (con "Prueba" en el nombre) y bórralos al final; así tu rutina no cambia. Antes de empezar, exporta una copia de seguridad a Drive.
+
+Anota solo lo que **no** salga como dice cada paso (el número del paso y qué pasó).
+
+### A. Crear (sábado 21/11)
+1. "+ Nuevo evento" → "Prueba 1", de 10:00 a 11:00, sin repetición. Aparece el sábado 21 y no el 28 (CG-01).
+2. Pon el fin antes del inicio: aparece el error junto al campo y no guarda (CG-04). Con 10:00 a 10:03 tampoco guarda (CG-05).
+3. Crea "Prueba 1b" de 10:30 a 11:30 el mismo sábado: avisa que se superpone con "Prueba 1" y guarda igual (CG-06).
+
+### B. Repetir
+4. "Prueba 2", días de la semana lunes y jueves. Aparece el 23/11, 26/11, 30/11 y 3/12 (CG-02).
+5. "Prueba 3", cada 2 semanas, martes, creada desde el martes 24/11. Aparece el 24/11 y el 8/12, pero no el 1/12 (CG-03).
+
+### C. Editar "Prueba 2"
+6. Desde el lunes 23/11, cambia el nombre con **"Solo …"**: el 26/11 sigue con el nombre viejo (CG-07).
+7. Desde el lunes 30/11, cambia el horario con **"A partir del 30/11"**: el 26/11 conserva el horario viejo y del 30/11 en adelante está el nuevo (CG-08).
+8. Cambia la nota con **"Siempre"**: se ve en el 23/11 y en el 3/12 (CG-09).
+9. Cambia la repetición (por ejemplo, agrega el viernes) y toca Guardar: la hoja no ofrece "Solo …" y explica por qué (CG-10). Puedes cancelar.
+
+### D. Eliminar y deshacer
+10. El 30/11, elimina "Prueba 2" con **"Solo …"**: desaparece ese día y sigue el 3/12 (CG-13).
+11. Elimínala del 3/12 con **"A partir del 3/12"**: el 30/11 y los días anteriores la conservan (CG-14).
+12. Elimina "Prueba 1" y toca **"Deshacer"** antes de 8 segundos: vuelve (CG-17).
+13. Empieza una sesión en un evento de hoy y trata de eliminarlo: pide terminar la sesión primero y no borra nada (CG-16). No lo elimines; termina la sesión normalmente.
+
+### E. Categorías (Ajustes → Administrar categorías)
+14. Crea "Prueba Lectura" con "Permite empezar y medir". Crea un evento de hoy con esa categoría, que empiece en unos 10 minutos. En Agenda tiene "Empezar" y su aviso trae el botón "Empecé" (CG-18, CA-02). Toca "Empecé" y, después de un par de minutos, "Terminar".
+15. Trata de eliminar una categoría con eventos (por ejemplo "Inglés"): pide pasar los eventos a otra o archivarla, y no elimina. Cancela (CG-19).
+16. Cambia el nombre de "Prueba Lectura" a "Prueba Libros". Elimina el evento del paso 14 y después la categoría: desaparece de la lista (CG-20).
+
+### F. Metas (pestaña Metas)
+17. "+ Nueva meta" → "Prueba páginas", cantidad, unidad "páginas", objetivo 20 por día. En Agenda o en Metas, suma hasta 25: muestra 25 de 20 (CG-22).
+18. Crea otra meta llamada igual: no guarda (CG-28).
+19. Una meta de tiempo sin eventos asociados: no guarda y explica por qué (CG-23).
+20. Archiva "Prueba páginas": desaparece de las tarjetas de hoy (CG-26). Después elimínala.
+
+### G. Avisos
+21. Crea "Prueba aviso" para hoy, dentro de 10 minutos. Antes de que suene, muévelo 5 minutos más tarde. Tiene que sonar solo a la hora nueva (CG-30).
+22. Cambia el horario de un evento de hoy que ya pasó: no tiene que sonar ningún aviso por ese cambio (CG-31).
+23. Ajustes → Permisos: "Avisos programados" muestra un número parecido al de antes (unos 219).
+
+### H. Datos y CSV
+24. Datos → "Exportar todos los datos (CSV)". Busca:
+    - la sesión del paso 14, con la categoría **"Prueba Lectura"**, el nombre que tenía en ese momento (CG-21, CA-17);
+    - los conteos de "Prueba páginas", aunque la meta ya esté eliminada (CG-27).
+
+### I. Limpieza
+25. Elimina con "Siempre" lo que quede de las pruebas: "Prueba 1", "Prueba 1b", "Prueba 3", "Prueba aviso" y el resto de "Prueba 2". Tu rutina tiene que verse como antes.
+
+**No hace falta probar en el teléfono:**
+- El resto de los criterios ya lo cubren las 220 pruebas automáticas: reglas del modelo CA-01 a CA-15, margen CA-03/CA-04, CG-11, CG-12, CG-24, CG-25 y CG-29.
+- Los de migración (CA-16, CA-18, CA-19 y CG-32) se verificaron en tu teléfono en la fase 2. Ese código ya no existe.
+- "Restaurar la plantilla inicial" y "Borrar toda la agenda" cambian tu agenda real. Están cubiertos por pruebas automáticas y tienen "Deshacer", pero no hace falta tocarlos.
