@@ -121,6 +121,8 @@ Verificación: 45 pruebas pasan en cuatro zonas horarias (Argentina, UTC, Los Á
 
 Verificación: 132 pruebas (13 de T1.7, incluida una que comprueba que el modo prueba no escribe ni una clave), typecheck, lint, empaquetado para Android y CI.
 
+**Resultado en el teléfono (17/11/2026).** Sofía publicó la actualización y compartió el informe: "Modo: dry-run · Estado: ok · Prueba correcta · 66 eventos en el formato nuevo · 72 días revisados, sin diferencias". Sin casos especiales: ninguna tarea separada, ninguna marca de hecho reescrita, ninguna edición de un día, de fin de semana ni datos desconocidos. Los 66 eventos coinciden con la plantilla original, así que en sus datos actuales no hay ediciones de la agenda. **La migración queda validada con datos reales. Fase 1 completa en modo prueba**; la migración real se activa en E2, al final de la fase 2.
+
 **Prueba en el teléfono (obligatoria):**
 1. Exportar la copia de seguridad (T0.1) y guardarla fuera del teléfono.
 2. Instalar la versión con la migración.
