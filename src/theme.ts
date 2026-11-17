@@ -43,6 +43,9 @@ const TOKEN_TO_CAT: Record<ColorToken, Cat> = {
 };
 export const colorFor = (t: Theme, token: ColorToken) => t.cat[TOKEN_TO_CAT[token]];
 
+/** Los dos temas, para pruebas. */
+export const THEMES = { light, dark };
+
 export function useTheme(): Theme {
   return useColorScheme() === 'dark' ? dark : light;
 }

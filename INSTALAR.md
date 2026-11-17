@@ -149,3 +149,31 @@ npx eas-cli@latest update --channel preview --environment preview --message "fas
 4. **Agenda:** revisa tres días con registro (por ejemplo, un lunes, un martes y un jueves de las últimas dos semanas): mismas tareas, mismos horarios y mismas marcas de hecho que antes.
 5. **Metas** y **Datos:** mismos números y mismas sesiones.
 6. Usa la app normalmente un día: empezar, terminar, un conteo y, si se da, un margen.
+
+## Fase 3: crear, editar y eliminar eventos
+
+### Cómo publicarla
+
+```bash
+git pull
+```
+
+```bash
+npm install
+```
+
+```bash
+npx eas-cli@latest update --channel preview --environment preview --message "fase 3: gestión de eventos"
+```
+
+### Qué probar en el teléfono
+
+1. **Semana de 7 días:** en Agenda aparecen también sábado y domingo.
+2. **Crear un evento de sábado** sin repetición ("+ Nuevo evento"). Tiene que aparecer solo ese sábado.
+3. **Crear uno "Cada N semanas"** (por ejemplo, martes cada 2 semanas) y mirar los tres martes siguientes.
+4. **Editar** un evento que se repite y probar los tres alcances: "Solo hoy", "A partir de hoy" y "Siempre". Mirar tres semanas.
+5. **Cambiar la repetición** al editar: la hoja no tiene que ofrecer "Solo hoy".
+6. **Eliminar** con cada alcance y comprobar en Datos que las sesiones siguen ahí.
+7. **Intentar eliminar** un evento con una sesión en curso: no tiene que dejar.
+8. **Deshacer:** después de guardar o eliminar, tocar "Deshacer" en la barra de abajo antes de 8 segundos.
+9. Si un aviso de un evento nuevo tiene que sonar hoy, comprobar que suene.

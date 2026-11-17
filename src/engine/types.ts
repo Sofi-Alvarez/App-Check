@@ -5,7 +5,8 @@
 // fase 3 las reemplace.
 
 import type { DayType } from '../agenda';
-import type { ColorToken } from '../domain/types';
+import type { EditScope, EventPatch, OpError } from '../domain/events';
+import type { AgendaState, ColorToken, Series } from '../domain/types';
 import type { Settings } from '../storeShape';
 
 /** Un evento ubicado en un día, con los campos cortos que usan las pantallas. `c` es el id de la categoría. */
@@ -112,4 +113,28 @@ export interface AgendaEngine {
   shiftTuesdays(days: number): void;
   loadSettings(): Settings;
   saveSettings(s: Settings): void;
+  /** Gestión de eventos con alcance (fase 3). Solo existe en el motor v2. */
+  events?: EventOps;
+}
+
+export type EventResult = { ok: true; id: string } | { ok: false; error: OpError };
+
+/** Operaciones de la spec 009 sobre series (fase 3). */
+export interface EventOps {
+  series(id: string): Series | null;
+  /** Categorías que se pueden elegir (no archivadas), en orden. */
+  categories(): CategoryInfo[];
+  create(date: string, patch: EventPatch): EventResult;
+  edit(id: string, refDate: string, patch: EventPatch, scope: EditScope): EventResult;
+  remove(id: string, refDate: string, scope: EditScope): EventResult;
+  allowedScopes(id: string, refDate: string, patch: EventPatch): EditScope[];
+  allowedDeleteScopes(id: string, refDate: string): EditScope[];
+  /** Días con cambios propios que se conservan (desde una fecha, o todos). */
+  modifiedDays(id: string, fromDate: string | null): number;
+  daysAffected(id: string, refDate: string, scope: EditScope): number | null;
+  /** Sesiones registradas de este evento (por su id o por el id original). */
+  sessionsFor(id: string): number;
+  /** Estado completo, para deshacer. */
+  snapshot(): AgendaState;
+  restore(snap: AgendaState): void;
 }

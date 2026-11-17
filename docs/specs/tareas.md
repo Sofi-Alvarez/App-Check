@@ -188,13 +188,34 @@ Verificación: 132 pruebas (13 de T1.7, incluida una que comprueba que el modo p
 
 | ID | Tarea | Tamaño | Depende de | Cubre |
 |---|---|---|---|---|
-| T3.1 | **Operaciones puras de edición y borrado con alcance**: `editEvent(alcance)` y `deleteEvent(alcance)` para "Solo hoy", "A partir de hoy" y "Siempre". Incluye partir una serie, cerrar con `endDate` y conservar las excepciones | L | T2.1 | CG-07 a 15 |
-| T3.2 | **Deshacer** por instantánea del estado afectado, un solo paso, 8 segundos | S | T3.1 | CG-17 |
-| T3.3 | **Editor de eventos** (reemplaza `TaskEditor.tsx`): campos, validaciones, repetición con descripción en lenguaje natural ("Cada 2 semanas, el martes, desde el 03/11"), aviso de superposición | L | T3.1 | CG-01 a 06 |
-| T3.4 | **Hoja de alcance** con tres opciones, sin ninguna preseleccionada, con etiquetas dinámicas ("Solo el 24/11", "A partir del 24/11"), la opción "Solo hoy" oculta si cambió la regla y la línea "N días tienen cambios propios" | M | T3.3 | CG-10, CG-12 |
-| T3.5 | **Eliminar**: confirmación con cantidad de días y sesiones registradas, y bloqueo si hay una sesión en curso | M | T3.1 | CG-15, CG-16 |
-| T3.6 | **Cualquier fecha, incluido fin de semana**: la vista del día muestra sábados y domingos (hoy devuelve vacío) y permite crear con "+" | M | T2.1 | CG-01 |
-| T3.7 | **Efectos tras cada cambio**: reprogramar avisos y refrescar Agenda, Metas y Datos sin reabrir | S | T3.3, T2.4 | CG-30, CG-31 |
+| T3.1 ✅ | **Operaciones puras de edición y borrado con alcance**: `editEvent(alcance)` y `deleteEvent(alcance)` para "Solo hoy", "A partir de hoy" y "Siempre". Incluye partir una serie, cerrar con `endDate` y conservar las excepciones | L | T2.1 | CG-07 a 15 |
+| T3.2 ✅ | **Deshacer** por instantánea del estado afectado, un solo paso, 8 segundos | S | T3.1 | CG-17 |
+| T3.3 ✅ | **Editor de eventos** (reemplaza `TaskEditor.tsx`): campos, validaciones, repetición con descripción en lenguaje natural ("Cada 2 semanas, el martes, desde el 03/11"), aviso de superposición | L | T3.1 | CG-01 a 06 |
+| T3.4 ✅ | **Hoja de alcance** con tres opciones, sin ninguna preseleccionada, con etiquetas dinámicas ("Solo el 24/11", "A partir del 24/11"), la opción "Solo hoy" oculta si cambió la regla y la línea "N días tienen cambios propios" | M | T3.3 | CG-10, CG-12 |
+| T3.5 ✅ | **Eliminar**: confirmación con cantidad de días y sesiones registradas, y bloqueo si hay una sesión en curso | M | T3.1 | CG-15, CG-16 |
+| T3.6 ✅ | **Cualquier fecha, incluido fin de semana**: la vista del día muestra sábados y domingos (hoy devuelve vacío) y permite crear con "+" | M | T2.1 | CG-01 |
+| T3.7 ✅ | **Efectos tras cada cambio**: reprogramar avisos y refrescar Agenda, Metas y Datos sin reabrir | S | T3.3, T2.4 | CG-30, CG-31 |
+
+**Estado de la fase 3 (17/11/2026).** Hecha en código, con 209 pruebas en verde (typecheck, lint y empaquetado para Android también pasan). Solo se activa con el motor v2 (el teléfono ya migró); con el formato viejo sigue el editor anterior.
+
+| Tarea | Dónde | Qué quedó |
+|---|---|---|
+| T3.1 | `src/domain/events.ts` | Crear, editar y eliminar con "Solo hoy", "A partir de hoy" y "Siempre" (criterios CG-01 a CG-15). "A partir de hoy" separa la serie, lleva las excepciones futuras a la nueva y suma la serie nueva a las metas asociadas. Eliminar "Siempre" desasocia de las metas y archiva una meta de tiempo que queda sin eventos |
+| T3.2 | `App.tsx` | "Deshacer" de un paso durante 8 segundos, con una barra sobre las pestañas |
+| T3.3 | `src/screens/EventEditor.tsx` | Editor nuevo: nombre, categoría (todas, incluida "Cierre del día"), día, inicio y fin con ±15, nota, repetición (no se repite, todos los días, días de la semana, cada N semanas), fin (nunca o una fecha), la regla en palabras y aviso de superposición |
+| T3.4 | `EventEditor.tsx` (`ScopeSheet`), `src/domain/describe.ts` | Hoja de alcance sin opción preseleccionada, con etiquetas dinámicas ("Solo el 24/11", "A partir del 24/11"), una explicación por opción, "Solo hoy" oculto si cambió la repetición y la línea de días con cambios propios |
+| T3.5 | `EventEditor.tsx` | Eliminar con hoja de alcance, días afectados (si se pueden contar) y sesiones registradas; bloqueado si hay una sesión en curso |
+| T3.6 | `AgendaScreen.tsx` | Semana de 7 días, crear y empezar cualquier día (también sábado y domingo), mensaje en días sin eventos y la app abre en el día de hoy aunque sea fin de semana |
+| T3.7 | `App.tsx` | Cada cambio reprograma los avisos y refresca Agenda, Metas y Datos |
+
+**Pruebas de pantalla:** se sumó React Native Testing Library 14.1 (la versión que pide la guía de Expo SDK 58, solo para desarrollo). `src/screens/__tests__/event-editor-test.tsx` dibuja el editor con un motor v2 real y recorre crear, la hoja de alcance, cambiar la repetición, eliminar, la sesión en curso y la superposición.
+
+**Fuera de esta fase (anotado):**
+- En el editor todavía no están "Metas asociadas" ni el aviso propio por evento: van con la fase 5 (metas) y una tarea de avisos.
+- "Crear categoría…" desde el editor va con la fase 4.
+- Para un evento que se repite, el editor no ofrece mover una sola ocurrencia a otra fecha (la lógica existe en `editEvent`; falta la interfaz).
+- Con 7 días, los botones de la semana quedan de unos 30 dp de ancho en un teléfono de 360 dp, por debajo de los 48 recomendados. Revisar al diseñar la navegación Hoy / Semana.
+- La etiqueta del día ("Día completo", "Martes con adscripción") y el texto "se cierra a las 18:00" son de la rutina original; se limpian en la fase 6.
 
 **Prueba en el teléfono (lista de verificación):**
 1. Crear un evento de sábado sin repetición.

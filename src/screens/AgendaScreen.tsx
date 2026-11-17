@@ -8,6 +8,7 @@ import type { Ctx } from '../ctx';
 import type { EngineBlock, TaskDraft } from '../engine/types';
 import { colorFor } from '../theme';
 import { Bar, Btn, Card, Label, MONO, Pill } from '../ui';
+import { EditTarget, EventEditor } from './EventEditor';
 import { TaskEditor } from './TaskEditor';
 
 const toRef = (day: string, b: EngineBlock) => ({ bid: b.id, day, title: b.t, cat: b.c, planS: b.s, planE: b.e });
@@ -19,6 +20,10 @@ export function AgendaScreen({ c }: { c: Ctx }) {
   const type = c.engine.dayKind(viewIso);
   const blocks = c.blocks;
   const [draft, setDraft] = useState<TaskDraft | null>(null);
+  const [editing, setEditing] = useState<EditTarget | null>(null);
+  // Con el modelo nuevo (fase 3) se puede planificar cualquier día; con el formato viejo, solo los días con tipo.
+  const v2 = !!c.engine.events;
+  const canPlan = v2 || !!type;
   const todayIso = iso(now);
   const isToday = viewIso === todayIso;
   const sec = secondsOfDay(now);
@@ -26,7 +31,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
   const nextBlock = isToday && curIdx < 0 ? blocks.find((b) => b.s * 60 > sec) : undefined;
   const cur = curIdx >= 0 ? blocks[curIdx] : undefined;
   const { active } = c;
-  const curInfo = cur && type ? toRef(viewIso, cur) : null;
+  const curInfo = cur && canPlan ? toRef(viewIso, cur) : null;
   const activeMs = active ? (active.pausedAt || now.getTime()) - active.startedAt - active.pausedMs : 0;
   const activeOther = !!active && !!curInfo && active.bid !== curInfo.bid;
 
@@ -63,7 +68,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
           <Text style={[s.navText, { color: t.fg }]}>‹</Text>
         </Pressable>
         <View style={s.days}>
-          {[0, 1, 2, 3, 4].map((i) => {
+          {(v2 ? [0, 1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4]).map((i) => {
             const x = addDays(mon, i);
             const id = iso(x);
             const sel = id === viewIso;
@@ -208,7 +213,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
                       a11y={`Aviso de ${b.t}: ${muted ? 'silenciado' : 'activado'}`}
                       onPress={() => c.toggleMute(key)}
                     />
-                    {isToday && type ? (
+                    {isToday && canPlan ? (
                       <Pill
                         t={t}
                         label={active?.bid === b.id ? 'En curso' : 'Empezar'}
@@ -223,7 +228,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
                       t={t}
                       label="Editar"
                       a11y={`Editar ${b.t}`}
-                      onPress={() => setDraft({ id: b.id, t: b.t, c: b.c, s: b.s, e: b.e, n: b.n })}
+                      onPress={() => (v2 ? setEditing({ id: b.id, refDate: viewIso }) : setDraft({ id: b.id, t: b.t, c: b.c, s: b.s, e: b.e, n: b.n }))}
                     />
                     {noTimer ? null : (
                       <Pill t={t} label={`Timer ${b.e - b.s} min`} onPress={() => c.startTimer(b.e - b.s, b.t)} />
@@ -234,19 +239,24 @@ export function AgendaScreen({ c }: { c: Ctx }) {
             );
           })}
         </View>
-        {type ? (
+        {v2 && blocks.length === 0 ? (
+          <Text style={[s.note, { color: t.muted }]}>No hay eventos este día. Toca “+ Nuevo evento” para agregar uno.</Text>
+        ) : null}
+        {canPlan ? (
           <Btn
             t={t}
             kind="ghost"
-            label="+ Nueva tarea"
+            label={v2 ? '+ Nuevo evento' : '+ Nueva tarea'}
             onPress={() => {
               const start = isToday ? Math.min(23 * 60, Math.ceil(sec / 900) * 15) : 9 * 60;
-              setDraft({ id: null, t: '', c: 'work', s: start, e: Math.min(24 * 60, start + 30), n: '' });
+              if (v2) setEditing({ id: null, refDate: viewIso, start });
+              else setDraft({ id: null, t: '', c: 'work', s: start, e: Math.min(24 * 60, start + 30), n: '' });
             }}
           />
         ) : null}
       </View>
       <TaskEditor c={c} draft={draft} type={type} onClose={() => setDraft(null)} />
+      {v2 ? <EventEditor c={c} target={editing} onClose={() => setEditing(null)} /> : null}
     </ScrollView>
   );
 }

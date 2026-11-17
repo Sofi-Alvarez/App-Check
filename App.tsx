@@ -12,7 +12,8 @@ import {
   StartTap, askNotifications, cancelTimerAlert, onStartTap, pendingStartTap, rescheduleAgenda, scheduleTimerAlert,
   setupChannels,
 } from './src/notifications';
-import type { AgendaEngine, BlockRef, EngineBlock, MarginPlan, Scope, TaskDraft } from './src/engine/types';
+import type { AgendaState } from './src/domain/types';
+import type { AgendaEngine, BlockRef, EngineBlock, EventResult, MarginPlan, Scope, TaskDraft } from './src/engine/types';
 import { createV1Engine } from './src/engine/v1';
 import { createV2Engine } from './src/engine/v2';
 import { migrateDoneToIds } from './src/schedule';
@@ -56,9 +57,11 @@ function boot(): { migration: StartupMigration; engine: AgendaEngine } {
   return { migration, engine };
 }
 
-function defaultView(): string {
+/** Día que se ve al abrir. Con el formato viejo no había agenda el fin de semana y se saltaba al lunes; con el nuevo, hoy. */
+function defaultView(kind: AgendaEngine['kind']): string {
   const n = new Date();
   const dw = n.getDay();
+  if (kind === 'v2') return iso(n);
   return iso(dw === 6 ? addDays(n, 2) : dw === 0 ? addDays(n, 1) : n);
 }
 
@@ -73,7 +76,7 @@ function Root() {
   const [{ migration, engine }] = useState(boot);
   const [settings, setSettings] = useState<Settings>(() => engine.loadSettings());
   const [timer, setTimer] = useState<TimerState>(() => loadTimer());
-  const [viewIso, setViewIso] = useState(defaultView);
+  const [viewIso, setViewIso] = useState(() => defaultView(engine.kind));
   const [active, setActive] = useState<ActiveSession | null>(() => loadActive());
   const lastResched = useRef(0);
 
@@ -234,6 +237,30 @@ function Root() {
     scheduleChanged();
   }, [engine, scheduleChanged]);
 
+  // Operaciones de la fase 3 con "Deshacer" durante 8 segundos (spec 009, 3.6).
+  const [undo, setUndo] = useState<{ snap: AgendaState; label: string } | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const runEvent = useCallback((op: () => EventResult, label: string): EventResult => {
+    const ev = engine.events;
+    if (!ev) return { ok: false, error: { kind: 'not-found' } };
+    const snap = ev.snapshot();
+    const res = op();
+    if (res.ok) {
+      scheduleChanged();
+      setUndo({ snap, label });
+      if (undoTimer.current) clearTimeout(undoTimer.current);
+      undoTimer.current = setTimeout(() => setUndo(null), 8000);
+    }
+    return res;
+  }, [engine, scheduleChanged]);
+  const doUndo = useCallback(() => {
+    if (!undo || !engine.events) return;
+    engine.events.restore(undo.snap);
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    setUndo(null);
+    scheduleChanged();
+  }, [undo, engine, scheduleChanged]);
+
   // Mover la alternancia de los martes (tarjeta de Ajustes).
   const shiftTuesdays = useCallback((days: number) => {
     engine.shiftTuesdays(days);
@@ -378,7 +405,7 @@ function Root() {
     viewIso, setViewIso, day, toggleDone, changeCount, toggleMute,
     timer, timerLeft, startTimer, toggleTimer, resetTimer,
     active, startSession, pauseResume, finishSession,
-    blocks, saveTask, deleteTask, restoreSchedule, migration, engine, shiftTuesdays,
+    blocks, saveTask, deleteTask, restoreSchedule, migration, engine, shiftTuesdays, runEvent,
   };
 
   return (
@@ -391,6 +418,14 @@ function Root() {
         {tab === 'timer' && <TimerScreen c={ctx} />}
         {tab === 'ajustes' && <SettingsScreen c={ctx} />}
       </View>
+      {undo ? (
+        <View accessibilityLiveRegion="polite" style={[s.undo, { backgroundColor: t.fg }]}>
+          <Text style={[s.undoText, { color: t.bg }]} numberOfLines={2}>{undo.label}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Deshacer" onPress={doUndo} hitSlop={8} style={s.undoBtn}>
+            <Text style={[s.undoAction, { color: t.bg }]}>Deshacer</Text>
+          </Pressable>
+        </View>
+      ) : null}
       <View style={[s.bar, { backgroundColor: t.surface, borderTopColor: t.line, paddingBottom: insets.bottom }]}>
         {TABS.map((x) => {
           const on = tab === x.key;
@@ -424,6 +459,10 @@ export default function App() {
 }
 
 const s = StyleSheet.create({
+  undo: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 12, marginBottom: 8, paddingLeft: 16, paddingRight: 8, minHeight: 52, borderRadius: 12 },
+  undoText: { flex: 1, fontSize: 15, fontWeight: '600' },
+  undoBtn: { minHeight: 48, minWidth: 48, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  undoAction: { fontSize: 15, fontWeight: '800', textDecorationLine: 'underline' },
   root: { flex: 1 },
   screen: { flex: 1 },
   bar: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth },

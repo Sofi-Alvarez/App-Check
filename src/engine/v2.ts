@@ -6,6 +6,10 @@ import type { Repository } from '../data/repository';
 import { KEYS } from '../data/repository';
 import { categoryById } from '../domain/categories';
 import { addDaysISO, weekdayOf } from '../domain/dates';
+import {
+  allowedDeleteScopes, allowedScopes, createEvent, daysAffected, deleteEvent, editEvent, modifiedDays,
+} from '../domain/events';
+import type { OpResult } from '../domain/events';
 import { dailyTarget, isActiveOn, quantityProgress } from '../domain/goals';
 import type { AgendaState, Category } from '../domain/types';
 import type { Settings } from '../storeShape';
@@ -14,7 +18,10 @@ import {
   restoreDefaults, toEngineBlocks,
 } from './legacy-ops';
 import { applyMarginTo, planMarginFor } from './margin';
-import type { AgendaEngine, CategoryInfo, EngineBlock, GoalCard, WeekRow } from './types';
+import type { AgendaEngine, CategoryInfo, EngineBlock, EventResult, GoalCard, WeekRow } from './types';
+
+/** Copia profunda del estado (sin depender de `structuredClone`, que no todas las versiones de Hermes tienen). */
+const structuredCloneState = (s: AgendaState): AgendaState => JSON.parse(JSON.stringify(s));
 
 const info = (c: Category): CategoryInfo => ({
   id: c.id, name: c.name, color: c.color, movable: c.movable, tracked: c.tracked, marginPreference: c.marginPreference,
@@ -30,6 +37,11 @@ export function createV2Engine(repo: Repository, clock: () => Date = () => new D
   const today = () => iso(clock());
   const save = (s: AgendaState) => repo.saveAgenda(s);
   const cat = (id: string) => info(categoryById(state().categories, id));
+  const commit = (r: OpResult): EventResult => {
+    if (!r.ok) return r;
+    save(r.state);
+    return { ok: true, id: r.id };
+  };
 
   const engine: AgendaEngine = {
     kind: 'v2',
@@ -179,6 +191,38 @@ export function createV2Engine(repo: Repository, clock: () => Date = () => new D
     },
     saveSettings(s) {
       repo.saveSettings({ notifStart: s.notifStart, endLead: s.endLead, wake: s.wake, muted: s.muted });
+    },
+
+    events: {
+      series: (id) => state().series.find((x) => x.id === id) ?? null,
+      categories: () => state().categories.filter((c) => !c.archived).map(info),
+      create: (date, patch) => commit(createEvent(state(), date, patch)),
+      edit: (id, refDate, patch, scope) => commit(editEvent(state(), id, refDate, patch, scope)),
+      remove: (id, refDate, scope) => commit(deleteEvent(state(), id, refDate, scope)),
+      allowedScopes(id, refDate, patch) {
+        const s = state().series.find((x) => x.id === id);
+        return s ? allowedScopes(s, refDate, patch) : [];
+      },
+      allowedDeleteScopes(id, refDate) {
+        const s = state().series.find((x) => x.id === id);
+        return s ? allowedDeleteScopes(s, refDate) : [];
+      },
+      modifiedDays: (id, fromDate) => modifiedDays(state(), id, fromDate),
+      daysAffected(id, refDate, scope) {
+        const s = state().series.find((x) => x.id === id);
+        return s ? daysAffected(s, refDate, scope) : 0;
+      },
+      sessionsFor(id) {
+        const st = state();
+        const s = st.series.find((x) => x.id === id);
+        if (!s) return 0;
+        const root = legacyOf(st, id);
+        return repo.loadAllLog().filter((e) =>
+          e.kind === 'start' &&
+          (e.bid === id || (e.bid === root && e.day >= s.startDate && (s.endDate === null || e.day <= s.endDate)))).length;
+      },
+      snapshot: () => structuredCloneState(state()),
+      restore: (snap) => save(snap),
     },
   };
   return engine;
