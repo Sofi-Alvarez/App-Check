@@ -21,6 +21,12 @@ import { Entry, V1State, readV1, v1BlocksFor, v1ListFor } from './v1-reader';
 export const BACKUP_COMPLETE_KEY = `${KEYS.backupPrefix}__complete`;
 /** Semanas hacia adelante que cubre la autoverificación. */
 export const VERIFY_FUTURE_DAYS = 56;
+/**
+ * Días hacia atrás desde el primer dato en que las series ya existen. La v1 mostraba la agenda en cualquier fecha
+ * pasada (las listas no tenían fecha de inicio); con un año hacia atrás, navegar al pasado se sigue viendo igual.
+ * 364 = 52 semanas exactas, para no correr días de la semana. La autoverificación también cubre ese año.
+ */
+export const HISTORY_DAYS = 364;
 
 // ---- Reglas por tipo de día ----------------------------------------------------------------------------------------
 
@@ -235,7 +241,7 @@ export function migrateV1(allEntries: Entry[], today: string): MigrationResult {
   const st = readV1(src.entries);
   const anchor = st.settings.anchor;
   const dates = dataDates(st);
-  const earliest = minDate([...dates, anchor, today])!;
+  const earliest = addDaysISO(minDate([...dates, anchor, today])!, -HISTORY_DAYS);
   const starts = seriesStarts(earliest, anchor);
   const notes: string[] = [];
 

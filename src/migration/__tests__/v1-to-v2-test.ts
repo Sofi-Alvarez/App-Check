@@ -41,8 +41,18 @@ describe('migración de la fixture v1', () => {
     }
   });
 
-  test('la autoverificación cubrió desde el primer dato hasta 8 semanas después de hoy', () => {
-    expect(r.report.verifiedDays).toBeGreaterThan(56);
+  test('la autoverificación cubrió desde un año antes del primer dato hasta 8 semanas después de hoy', () => {
+    // Del 03/11/2025 (52 semanas antes del primer dato) al 12/01/2027.
+    expect(r.report.verifiedDays).toBeGreaterThan(364 + 56);
+  });
+
+  test('las fechas anteriores al primer dato también muestran la agenda, como en la v1', () => {
+    for (const d of ['2026-10-27', '2026-06-01', '2025-11-10']) {
+      const before = (v1BlocksFor(v1, d) ?? []).map((b) => b.id).sort();
+      const after = buildDay(a, d).map((b) => legacyOf(a, b.id)).sort();
+      expect([d, after]).toEqual([d, before]);
+      expect(after.length).toBeGreaterThan(0);
+    }
   });
 
   test('CA-16: el registro no se toca y las sesiones calculadas son las mismas', () => {
