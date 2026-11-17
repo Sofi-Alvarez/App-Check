@@ -1,5 +1,5 @@
 import { LEGEND } from '../../agenda';
-import { LEGACY_CATEGORY_IDS, SEED_CATEGORIES, categoryById, isLegacyCategoryId, legacyCategory } from '../categories';
+import { COLOR_TOKENS, LEGACY_CATEGORY_IDS, SEED_CATEGORIES, categoryById, createCategory, isLegacyCategoryId, legacyCategory } from '../categories';
 
 describe('categorías iniciales (CA-01)', () => {
   test('son las 8 de la v1, con sus ids', () => {
@@ -46,5 +46,23 @@ describe('categoryById', () => {
   test('isLegacyCategoryId', () => {
     expect(isLegacyCategoryId('work')).toBe(true);
     expect(isLegacyCategoryId('lectura')).toBe(false);
+  });
+});
+
+describe('createCategory', () => {
+  const base = { categories: [...SEED_CATEGORIES], series: [], exceptions: [], goals: [], legacyBid: {} };
+  const input = { name: 'Lectura', color: 'teal' as const, movable: true, tracked: true, marginPreference: 'normal' as const };
+
+  test('crea una categoría con sus propiedades', () => {
+    const r = createCategory(base, input, 'c1');
+    expect(r.ok && r.state.categories.at(-1)).toEqual({ id: 'c1', ...input, archived: false });
+  });
+  test('nombre vacío, demasiado largo o repetido (sin distinguir mayúsculas ni espacios)', () => {
+    expect(createCategory(base, { ...input, name: '  ' })).toEqual({ ok: false, error: 'name-empty' });
+    expect(createCategory(base, { ...input, name: 'x'.repeat(31) })).toEqual({ ok: false, error: 'name-too-long' });
+    expect(createCategory(base, { ...input, name: ' ejercicio ' })).toEqual({ ok: false, error: 'name-taken' });
+  });
+  test('la paleta tiene 7 colores', () => {
+    expect(COLOR_TOKENS).toHaveLength(7);
   });
 });

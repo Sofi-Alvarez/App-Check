@@ -11,7 +11,8 @@ import { addDaysISO } from '../domain/dates';
 import { describeRule, scopeHint, scopeLabel } from '../domain/describe';
 import type { EditScope, EventPatch, OpError } from '../domain/events';
 import type { SeriesError } from '../domain/recurrence';
-import type { Rule } from '../domain/types';
+import { COLOR_TOKENS } from '../domain/categories';
+import type { ColorToken, Rule, SeriesReminder } from '../domain/types';
 import { overlaps } from '../engine/legacy-ops';
 import { colorFor } from '../theme';
 import { Btn, Label, MONO, Pill } from '../ui';
@@ -52,6 +53,15 @@ const ERRORS: Record<SeriesError, string> = {
   'bad-weekday': 'Revisa los días de la semana elegidos.',
   'bad-every-weeks': 'Elige cada cuántas semanas se repite.',
 };
+const CATEGORY_ERRORS = {
+  'name-empty': 'Escribe un nombre para la categoría.',
+  'name-too-long': 'El nombre puede tener hasta 30 caracteres.',
+  'name-taken': 'Ya hay una categoría con ese nombre.',
+} as const;
+const COLOR_NAMES: Record<ColorToken, string> = {
+  blue: 'Azul', pink: 'Rosa', teal: 'Verde azulado', green: 'Verde', amber: 'Ámbar', slate: 'Gris azulado', gray: 'Gris',
+};
+
 const opErrorText = (e: OpError) =>
   e.kind === 'invalid' ? e.errors.map((x) => ERRORS[x]).join(' ')
     : e.kind === 'scope-not-allowed' ? 'Si cambias la repetición, no se puede elegir "Solo hoy".'
@@ -72,7 +82,10 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
   // Lo que se ve ese día (con los cambios propios de ese día, si los hay).
   const occ = target.id ? (c.engine.blocksFor(target.refDate) ?? []).find((b) => b.id === target.id) : undefined;
   const isNew = !series;
-  const categories = useMemo(() => ev.categories(), [ev]);
+  const [catRev, setCatRev] = useState(0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `catRev` relee las categorías después de crear una
+  const categories = useMemo(() => ev.categories(), [ev, catRev]);
+  const goals = useMemo(() => ev.goals(), [ev]);
 
   const initStart = occ?.s ?? series?.startMin ?? target.start ?? 9 * 60;
   const initEnd = occ?.e ?? series?.endMin ?? Math.min(24 * 60, initStart + 30);
@@ -89,13 +102,22 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
   const [everyN, setEveryN] = useState(r && r.everyWeeks > 1 ? r.everyWeeks : 2);
   const [endDate, setEndDate] = useState<string | null>(series?.endDate ?? null);
   const [sheet, setSheet] = useState<null | { action: 'edit' | 'delete'; scopes: EditScope[]; patch?: EventPatch }>(null);
+  // Mover una sola ocurrencia de un evento que se repite (spec 009, 3.4).
+  const [moveDate, setMoveDate] = useState(target.refDate);
+  const [goalIds, setGoalIds] = useState<string[]>(() => (series ? ev.goalIdsFor(series.id) : []));
+  const [reminder, setReminder] = useState<SeriesReminder | null>(series?.reminder ?? null);
+  const [newCat, setNewCat] = useState<null | { name: string; color: ColorToken; movable: boolean; tracked: boolean; avoid: boolean; error: string }>(null);
   const [error, setError] = useState('');
 
   const s = parseHm(sText);
   const e = parseHm(eText);
   const rule: Rule | null = mode === 'none' ? null : mode === 'daily' ? { weekdays: [0, 1, 2, 3, 4, 5, 6], everyWeeks: 1 } : { weekdays: days, everyWeeks: mode === 'everyN' ? everyN : 1 };
   const startDate = series?.rule ? series.startDate : date;
-  const patch: EventPatch = { title: name, categoryId: cat, startMin: s ?? 0, endMin: e ?? 0, note, rule, endDate: rule ? endDate : null, date };
+  const patch: EventPatch = {
+    title: name, categoryId: cat, startMin: s ?? 0, endMin: e ?? 0, note, rule, endDate: rule ? endDate : null,
+    date: series?.rule ? moveDate : date, reminder, goalIds,
+  };
+  const moving = !!series?.rule && moveDate !== target.refDate;
 
   let formError = '';
   if (!name.trim()) formError = ERRORS['title-empty'];
@@ -103,8 +125,11 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
   else if (e <= s) formError = ERRORS['time-order'];
   else if (e - s < 5) formError = ERRORS['too-short'];
   else if (rule && rule.weekdays.length === 0) formError = ERRORS['no-weekdays'];
+  else if (moving && series && ev.allowedScopes(series.id, target.refDate, patch).length === 0) {
+    formError = 'Para mover un solo día, deja la repetición como estaba.';
+  }
 
-  const dayBlocks = c.engine.blocksFor(series?.rule ? target.refDate : date) ?? [];
+  const dayBlocks = c.engine.blocksFor(series?.rule ? moveDate : date) ?? [];
   const clash = !formError && s != null && e != null ? overlaps(dayBlocks, s, e, target.id) : [];
 
   const run = (op: () => ReturnType<typeof ev.create>, label: string) => {
@@ -137,6 +162,19 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
     else run(() => ev.remove(series!.id, target.refDate, scope), `Se eliminó "${series!.title}"`);
   };
 
+  const saveCategory = () => {
+    if (!newCat) return;
+    const r = ev.createCategory({
+      name: newCat.name, color: newCat.color, movable: newCat.movable, tracked: newCat.tracked,
+      marginPreference: newCat.avoid ? 'avoid' : 'normal',
+    });
+    if (!r.ok) return setNewCat({ ...newCat, error: CATEGORY_ERRORS[r.error] });
+    setCatRev((n) => n + 1);
+    setCat(r.id);
+    setNewCat(null);
+  };
+  const toggleGoal = (id: string) => setGoalIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+
   const toggleDay = (d: number) => setDays((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]));
   const today = iso(new Date());
 
@@ -160,7 +198,7 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
           <View style={st.pills}>
             {categories.map((k) => (
               <Pressable
-                key={k.id} accessibilityRole="button" accessibilityLabel={k.name} accessibilityState={{ selected: cat === k.id }}
+                key={k.id} accessibilityRole="button" accessibilityLabel={`Categoría ${k.name}`} accessibilityState={{ selected: cat === k.id }}
                 onPress={() => setCat(k.id)}
                 style={[st.catPill, { borderColor: cat === k.id ? t.fg : t.line, backgroundColor: cat === k.id ? t.surface2 : t.surface }]}
               >
@@ -168,7 +206,37 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
                 <Text style={[st.pillText, { color: t.fg }]}>{k.name}</Text>
               </Pressable>
             ))}
+            {!newCat ? (
+              <Pill t={t} label="+ Nueva categoría" onPress={() => setNewCat({ name: '', color: 'blue', movable: true, tracked: true, avoid: false, error: '' })} />
+            ) : null}
           </View>
+          {newCat ? (
+            <View style={[st.box, { borderColor: t.line, backgroundColor: t.surface }]}>
+              <Label t={t}>Nueva categoría</Label>
+              <TextInput
+                value={newCat.name} onChangeText={(v) => setNewCat({ ...newCat, name: v, error: '' })} maxLength={30}
+                placeholder="Ej.: Lectura" placeholderTextColor={t.muted} accessibilityLabel="Nombre de la categoría"
+                style={[st.input, { color: t.fg, backgroundColor: t.bg, borderColor: t.line }]}
+              />
+              <View style={st.pills}>
+                {COLOR_TOKENS.map((tk) => (
+                  <Pressable
+                    key={tk} accessibilityRole="button" accessibilityLabel={`Color ${COLOR_NAMES[tk]}`} accessibilityState={{ selected: newCat.color === tk }}
+                    onPress={() => setNewCat({ ...newCat, color: tk })}
+                    style={[st.swatch, { backgroundColor: colorFor(t, tk), borderColor: newCat.color === tk ? t.fg : 'transparent' }]}
+                  />
+                ))}
+              </View>
+              <Pill t={t} label="Permite empezar y medir" selected={newCat.tracked} onPress={() => setNewCat({ ...newCat, tracked: !newCat.tracked })} />
+              <Pill t={t} label="Es fija: nunca se mueve" selected={!newCat.movable} onPress={() => setNewCat({ ...newCat, movable: !newCat.movable })} />
+              <Pill t={t} label="Evitar para recibir margen" selected={newCat.avoid} onPress={() => setNewCat({ ...newCat, avoid: !newCat.avoid })} />
+              {newCat.error ? <Text style={[st.note, { color: t.warn }]}>{newCat.error}</Text> : null}
+              <View style={st.stepRow}>
+                <Btn t={t} kind="ghost" label="Cancelar" onPress={() => setNewCat(null)} style={{ flex: 1 }} />
+                <Btn t={t} label="Crear categoría" onPress={saveCategory} style={{ flex: 1 }} />
+              </View>
+            </View>
+          ) : null}
         </View>
 
         {!series?.rule ? (
@@ -179,6 +247,20 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
               <Text style={[st.stepText, { color: t.fg }]}>{longDate(date)}</Text>
               <Pill t={t} label="›" a11y="Día siguiente" onPress={() => setDate(addDaysISO(date, 1))} />
             </View>
+          </View>
+        ) : null}
+
+        {series?.rule ? (
+          <View style={{ gap: 8 }}>
+            <Label t={t}>Mover este día a otra fecha</Label>
+            <View style={st.stepper}>
+              <Pill t={t} label="‹" a11y="Mover un día antes" onPress={() => setMoveDate(addDaysISO(moveDate, -1))} />
+              <Text style={[st.stepText, { color: t.fg }]}>{longDate(moveDate)}</Text>
+              <Pill t={t} label="›" a11y="Mover un día después" onPress={() => setMoveDate(addDaysISO(moveDate, 1))} />
+            </View>
+            {moving ? (
+              <Text style={[st.note, { color: t.muted }]}>Se moverá solo el {longDate(target.refDate)}. Los demás días quedan igual.</Text>
+            ) : null}
           </View>
         ) : null}
 
@@ -234,6 +316,39 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
             </>
           ) : null}
           {!formError ? <Text style={[st.note, { color: t.fg }]}>{describeRule(rule, startDate, rule ? endDate : null)}.</Text> : null}
+        </View>
+
+        {goals.length ? (
+          <View style={{ gap: 8 }}>
+            <Label t={t}>Metas asociadas</Label>
+            <View style={st.pills}>
+              {goals.map((g) => (
+                <Pill key={g.id} t={t} label={g.name} a11y={`Meta ${g.name}`} selected={goalIds.includes(g.id)} onPress={() => toggleGoal(g.id)} />
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        <View style={{ gap: 8 }}>
+          <Label t={t}>Aviso</Label>
+          <View style={st.pills}>
+            <Pill t={t} label="Como en Ajustes" selected={reminder === null} onPress={() => setReminder(null)} />
+            <Pill
+              t={t} label="Personalizado" selected={reminder !== null}
+              onPress={() => setReminder(reminder ?? { atStart: c.settings?.notifStart ?? true, endLead: c.settings?.endLead ?? 5 })}
+            />
+          </View>
+          {reminder ? (
+            <>
+              <Pill t={t} label="Avisar al empezar" selected={reminder.atStart} onPress={() => setReminder({ ...reminder, atStart: !reminder.atStart })} />
+              <Text style={[st.note, { color: t.fg }]}>Avisar antes de que termine</Text>
+              <View style={st.pills}>
+                {[0, 5, 10, 15].map((m) => (
+                  <Pill key={m} t={t} label={m === 0 ? 'No' : `${m} min`} selected={reminder.endLead === m} onPress={() => setReminder({ ...reminder, endLead: m })} />
+                ))}
+              </View>
+            </>
+          ) : null}
         </View>
 
         {formError ? <Text style={[st.note, { color: t.warn }]}>{formError}</Text> : null}
@@ -355,6 +470,8 @@ const st = StyleSheet.create({
   pillText: { fontSize: 15, fontWeight: '600' },
   dot: { width: 12, height: 12, borderRadius: 6 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  box: { borderWidth: 1, borderRadius: 14, padding: 12, gap: 10 },
+  swatch: { width: 48, height: 48, borderRadius: 24, borderWidth: 3 },
   stepText: { flex: 1, fontSize: 16, fontWeight: '600', textAlign: 'center' },
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, gap: 12 },

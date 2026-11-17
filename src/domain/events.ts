@@ -6,7 +6,7 @@
 import { addDaysISO } from './dates';
 import { occursOn, validateSeries } from './recurrence';
 import type { SeriesError } from './recurrence';
-import type { AgendaState, ExceptionFields, Rule, Series, SeriesException } from './types';
+import type { AgendaState, ExceptionFields, Rule, Series, SeriesException, SeriesReminder } from './types';
 
 export type EditScope = 'today' | 'fromToday' | 'always';
 
@@ -20,6 +20,10 @@ export interface EventPatch {
   rule: Rule | null;
   endDate: string | null;
   date?: string;
+  /** Aviso propio del evento. `null` = usar Ajustes; `undefined` = no cambiar. Es del evento, no de un día. */
+  reminder?: SeriesReminder | null;
+  /** Metas asociadas al evento resultante. `undefined` = no cambiar. */
+  goalIds?: string[];
 }
 
 export type OpResult = { ok: true; state: AgendaState; id: string } | { ok: false; error: OpError };
@@ -42,6 +46,8 @@ export const isRepeating = (s: Series) => s.rule !== null;
 export function allowedScopes(s: Series, refDate: string, patch: EventPatch): EditScope[] {
   if (!isRepeating(s)) return ['always'];
   const ruleChanged = !sameRule(s.rule, patch.rule) || s.endDate !== patch.endDate;
+  // Mover una sola ocurrencia a otra fecha solo tiene sentido para ese día, y no junto con un cambio de repetición.
+  if (patch.date !== undefined && patch.date !== refDate) return ruleChanged ? [] : ['today'];
   const scopes: EditScope[] = [];
   if (!ruleChanged) scopes.push('today');
   if (refDate > s.startDate) scopes.push('fromToday');
@@ -75,11 +81,34 @@ export function createEvent(st: AgendaState, date: string, patch: EventPatch, id
   const s: Series = {
     id, title: patch.title.trim(), categoryId: patch.categoryId, startMin: patch.startMin, endMin: patch.endMin,
     note: patch.note.trim(), rule: patch.rule, startDate: date, endDate: patch.rule ? patch.endDate : null,
-    reminder: null, archived: false,
+    reminder: patch.reminder ?? null, archived: false,
   };
   const err = check(s);
   if (err) return { ok: false, error: err };
-  return { ok: true, state: { ...st, series: [...st.series, s] }, id };
+  return { ok: true, state: applyExtras({ ...st, series: [...st.series, s] }, id, patch), id };
+}
+
+/** Asocia la serie exactamente a esas metas (agrega y quita de `links`). No archiva metas. */
+export function setGoalLinks(st: AgendaState, seriesId: string, goalIds: string[]): AgendaState {
+  return {
+    ...st,
+    goals: st.goals.map((g) => {
+      const has = g.links.includes(seriesId);
+      const want = goalIds.includes(g.id);
+      if (has === want) return g;
+      return { ...g, links: want ? [...g.links, seriesId] : g.links.filter((l) => l !== seriesId) };
+    }),
+  };
+}
+
+/** Aplica el aviso propio y las metas asociadas (si vienen en el cambio) a la serie resultante. */
+function applyExtras(st: AgendaState, id: string, patch: EventPatch): AgendaState {
+  let next = st;
+  if (patch.reminder !== undefined) {
+    next = { ...next, series: next.series.map((x) => (x.id === id ? { ...x, reminder: patch.reminder ?? null } : x)) };
+  }
+  if (patch.goalIds !== undefined) next = setGoalLinks(next, id, patch.goalIds);
+  return next;
 }
 
 // ---- Editar -------------------------------------------------------------------------------------------------------
@@ -108,6 +137,11 @@ function linkGoals(st: AgendaState, fromId: string, toId: string): AgendaState['
 }
 
 export function editEvent(st: AgendaState, seriesId: string, refDate: string, patch: EventPatch, scope: EditScope, newId: string = newSeriesId()): OpResult {
+  const r = editCore(st, seriesId, refDate, patch, scope, newId);
+  return r.ok ? { ...r, state: applyExtras(r.state, r.id, patch) } : r;
+}
+
+function editCore(st: AgendaState, seriesId: string, refDate: string, patch: EventPatch, scope: EditScope, newId: string): OpResult {
   const s = find(st, seriesId);
   if (!s) return { ok: false, error: { kind: 'not-found' } };
 
@@ -119,10 +153,12 @@ export function editEvent(st: AgendaState, seriesId: string, refDate: string, pa
     return { ok: true, state: { ...st, series: st.series.map((x) => (x.id === s.id ? next : x)) }, id: s.id };
   }
 
-  if (!allowedScopes(s, refDate, patch).includes(scope)) {
-    return scope === 'today'
+  const allowed = allowedScopes(s, refDate, patch);
+  if (allowed.length === 0) return { ok: false, error: { kind: 'scope-not-allowed', reason: 'rule-changed' } };
+  if (!allowed.includes(scope)) {
+    return scope === 'today' || allowed.length === 1
       ? { ok: false, error: { kind: 'scope-not-allowed', reason: 'rule-changed' } }
-      : editEvent(st, seriesId, refDate, patch, 'always', newId); // "A partir de hoy" en el primer día = "Siempre"
+      : editCore(st, seriesId, refDate, patch, 'always', newId); // "A partir de hoy" en el primer día = "Siempre"
   }
 
   if (scope === 'today') {

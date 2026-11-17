@@ -210,12 +210,15 @@ Verificación: 132 pruebas (13 de T1.7, incluida una que comprueba que el modo p
 
 **Pruebas de pantalla:** se sumó React Native Testing Library 14.1 (la versión que pide la guía de Expo SDK 58, solo para desarrollo). `src/screens/__tests__/event-editor-test.tsx` dibuja el editor con un motor v2 real y recorre crear, la hoja de alcance, cambiar la repetición, eliminar, la sesión en curso y la superposición.
 
-**Fuera de esta fase (anotado):**
-- En el editor todavía no están "Metas asociadas" ni el aviso propio por evento: van con la fase 5 (metas) y una tarea de avisos.
-- "Crear categoría…" desde el editor va con la fase 4.
-- Para un evento que se repite, el editor no ofrece mover una sola ocurrencia a otra fecha (la lógica existe en `editEvent`; falta la interfaz).
-- Con 7 días, los botones de la semana quedan de unos 30 dp de ancho en un teléfono de 360 dp, por debajo de los 48 recomendados. Revisar al diseñar la navegación Hoy / Semana.
-- La etiqueta del día ("Día completo", "Martes con adscripción") y el texto "se cierra a las 18:00" son de la rutina original; se limpian en la fase 6.
+**Pendientes de la fase 3, resueltos (17/11/2026, a pedido de Sofía):**
+- **Metas asociadas y aviso propio en el editor.** Se eligen entre las metas existentes (crear y editar metas sigue siendo de la fase 5). El aviso propio ("Como en Ajustes" o "Personalizado": al empezar y minutos antes del fin) pisa los ajustes generales solo para ese evento y llega al plan de avisos. El aviso y las metas son del evento, no de un día: con "A partir de hoy" quedan en la serie nueva.
+- **"+ Nueva categoría" desde el editor**: nombre (único, hasta 30 caracteres), color de la paleta cerrada y las tres propiedades ("Permite empezar y medir", "Es fija: nunca se mueve", "Evitar para recibir margen"). Queda elegida al crearla. La pantalla para administrar categorías sigue en la fase 4. Una categoría creada no se deshace si después se cancela el editor.
+- **Mover solo este día** de un evento que se repite: solo con "Solo hoy" y sin cambiar la repetición a la vez. Se guarda directo, sin hoja, porque hay un solo alcance posible.
+- **Botones de la semana:** con el modelo nuevo, las flechas pasaron a la línea del título (48 × 48 dp) y los 7 días ocupan todo el ancho, con 2 dp entre ellos: unos 45 dp de ancho en un teléfono de 360 dp (antes, 30) y 48 dp desde unos 384 dp de ancho. La altura sigue en 56 dp.
+- **Textos de la rutina original:** con el modelo nuevo ya no aparece la etiqueta del tipo de día ("Día completo", "Martes con adscripción"). El cierre del día dice "No quedan más eventos por hoy." en lugar de "Lo que no es fijo se cierra a las 18:00".
+- Etiquetas accesibles distintas para categorías y metas con el mismo nombre ("Categoría Ejercicio" y "Meta Ejercicio").
+
+Sigue pendiente de la rutina original: la tarjeta "Martes con adscripción" de Ajustes (fase 6).
 
 **Prueba en el teléfono (lista de verificación):**
 1. Crear un evento de sábado sin repetición.

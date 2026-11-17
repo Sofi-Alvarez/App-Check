@@ -10,7 +10,8 @@ export interface ReminderDay {
   date: string;
   /** Medianoche local de ese día, en milisegundos. */
   dayStartMs: number;
-  blocks: { id: string; s: number; e: number; t: string; c: string; n: string }[];
+  /** `rem`: aviso propio del evento; si no viene (o es `null`), se usan los ajustes generales. */
+  blocks: { id: string; s: number; e: number; t: string; c: string; n: string; rem?: { atStart: boolean; endLead: number } | null }[];
 }
 
 export interface Reminder {
@@ -32,7 +33,9 @@ export function planReminders(
   for (const d of days) {
     d.blocks.forEach((b, j) => {
       if (s.muted[b.id]) return;
-      if (s.notifStart) {
+      const atStart = b.rem ? b.rem.atStart : s.notifStart;
+      const endLead = b.rem ? b.rem.endLead : s.endLead;
+      if (atStart) {
         const at = d.dayStartMs + b.s * 60000;
         if (at > now) {
           out.push({
@@ -41,10 +44,10 @@ export function planReminders(
           });
         }
       }
-      if (s.endLead > 0 && b.e - b.s >= 30) {
-        const at = d.dayStartMs + (b.e - s.endLead) * 60000;
+      if (endLead > 0 && b.e - b.s >= 30) {
+        const at = d.dayStartMs + (b.e - endLead) * 60000;
         if (at > now) {
-          out.push({ id: `ag:${d.date}:e${j}`, at, title: `Quedan ${s.endLead} min: ${b.t}`, body: `Termina a las ${hm(b.e)}`, start: null });
+          out.push({ id: `ag:${d.date}:e${j}`, at, title: `Quedan ${endLead} min: ${b.t}`, body: `Termina a las ${hm(b.e)}`, start: null });
         }
       }
     });

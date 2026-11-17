@@ -41,7 +41,20 @@ export function AgendaScreen({ c }: { c: Ctx }) {
       showsVerticalScrollIndicator={false}
     >
       <View style={{ gap: 4 }}>
-        <Text style={[s.kicker, { color: t.muted }]}>{weekRangeLabel(mon)}</Text>
+        {v2 ? (
+          // Con 7 días, las flechas de semana van en esta línea para que los días ocupen todo el ancho.
+          <View style={s.kickerRow}>
+            <Text style={[s.kicker, s.flex, { color: t.muted }]}>{weekRangeLabel(mon)}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Semana anterior" onPress={() => c.setViewIso(iso(addDays(d, -7)))} style={[s.navSq, { backgroundColor: t.surface, borderColor: t.line }]}>
+              <Text style={[s.navText, { color: t.fg }]}>‹</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Semana siguiente" onPress={() => c.setViewIso(iso(addDays(d, 7)))} style={[s.navSq, { backgroundColor: t.surface, borderColor: t.line }]}>
+              <Text style={[s.navText, { color: t.fg }]}>›</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Text style={[s.kicker, { color: t.muted }]}>{weekRangeLabel(mon)}</Text>
+        )}
         <Text style={[s.h1, { color: t.fg }]}>
           {DIAS[d.getDay()]} {d.getDate()} de {MESES[d.getMonth()]}
         </Text>
@@ -51,7 +64,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
               <Text style={[s.chipText, { color: t.onAccent }]}>Hoy</Text>
             </View>
           )}
-          {type && (
+          {type && !v2 && (
             <View style={[s.chip, { backgroundColor: t.surface2 }]}>
               <Text style={[s.chipText, { color: t.fg }]}>{TYPE_LABEL[type]}</Text>
             </View>
@@ -59,7 +72,8 @@ export function AgendaScreen({ c }: { c: Ctx }) {
         </View>
       </View>
 
-      <View style={s.weekNav}>
+      <View style={[s.weekNav, v2 && s.weekNav7]}>
+        {v2 ? null : (
         <Pressable
           accessibilityLabel="Semana anterior"
           onPress={() => c.setViewIso(iso(addDays(d, -7)))}
@@ -67,7 +81,8 @@ export function AgendaScreen({ c }: { c: Ctx }) {
         >
           <Text style={[s.navText, { color: t.fg }]}>‹</Text>
         </Pressable>
-        <View style={s.days}>
+        )}
+        <View style={[s.days, v2 && s.days7]}>
           {(v2 ? [0, 1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4]).map((i) => {
             const x = addDays(mon, i);
             const id = iso(x);
@@ -89,6 +104,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
             );
           })}
         </View>
+        {v2 ? null : (
         <Pressable
           accessibilityLabel="Semana siguiente"
           onPress={() => c.setViewIso(iso(addDays(d, 7)))}
@@ -96,6 +112,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
         >
           <Text style={[s.navText, { color: t.fg }]}>›</Text>
         </Pressable>
+        )}
       </View>
 
       <Card t={t}>
@@ -159,7 +176,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
           <>
             <Label t={t}>Fin</Label>
             <Text style={[s.nowTitle, { color: t.fg }]}>Terminó la agenda de hoy</Text>
-            <Text style={[s.note, { color: t.muted }]}>Lo que no es fijo se cierra a las 18:00. Descansa.</Text>
+            <Text style={[s.note, { color: t.muted }]}>No quedan más eventos por hoy.</Text>
           </>
         )}
         {isToday && active?.bid !== 'other' ? (
@@ -269,6 +286,10 @@ const s = StyleSheet.create({
   chip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99 },
   chipText: { fontSize: 13, fontWeight: '700' },
   weekNav: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  weekNav7: { gap: 0 },
+  days7: { gap: 2 },
+  kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  navSq: { width: 48, height: 48, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   navBtn: { width: 40, height: 56, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   navText: { fontSize: 26, lineHeight: 30 },
   days: { flex: 1, flexDirection: 'row', gap: 6 },

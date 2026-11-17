@@ -1,9 +1,9 @@
 import { defaultBlocks } from '../agenda';
 import { legacyCategory } from '../domain/categories';
-import { planReminders } from '../reminders';
+import { ReminderDay, planReminders } from '../reminders';
 
 const tracked = (c: string) => legacyCategory(c as never).tracked;
-const day = (date: string, blocks = defaultBlocks('mwf')) => ({ date, dayStartMs: new Date(2026, 10, 16).getTime(), blocks });
+const day = (date: string, blocks: ReminderDay['blocks'] = defaultBlocks('mwf')) => ({ date, dayStartMs: new Date(2026, 10, 16).getTime(), blocks });
 const S = { notifStart: true, endLead: 5, muted: {} as Record<string, boolean> };
 
 describe('planReminders', () => {
@@ -41,5 +41,19 @@ describe('planReminders', () => {
   test('un fin de semana con eventos también tiene avisos', () => {
     const sat = planReminders([day('2026-11-21', [{ id: 'x', s: 600, e: 660, t: 'Correr', c: 'health', n: '' }])], S, tracked, 0);
     expect(sat.map((r) => r.id)).toEqual(['ag:2026-11-21:s0', 'ag:2026-11-21:e0']);
+  });
+});
+
+describe('aviso propio por evento', () => {
+  const b = (rem: { atStart: boolean; endLead: number } | null | undefined) => [{ id: 'x', s: 600, e: 660, t: 'Correr', c: 'health', n: '', rem }];
+  const ids = (rem: Parameters<typeof b>[0], s = S) => planReminders([day('2026-11-21', b(rem))], s, tracked, 0).map((r) => r.title);
+
+  test('sin aviso propio se usan los ajustes', () => {
+    expect(ids(null)).toEqual(['10:00 · Correr', 'Quedan 5 min: Correr']);
+    expect(ids(undefined, { ...S, notifStart: false, endLead: 0 })).toEqual([]);
+  });
+  test('el aviso propio pisa los ajustes', () => {
+    expect(ids({ atStart: false, endLead: 15 })).toEqual(['Quedan 15 min: Correr']);
+    expect(ids({ atStart: true, endLead: 0 }, { ...S, notifStart: false })).toEqual(['10:00 · Correr']);
   });
 });

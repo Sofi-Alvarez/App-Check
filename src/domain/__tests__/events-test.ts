@@ -197,3 +197,47 @@ describe('eliminar con alcance (CG-13 a CG-15)', () => {
     expect(daysAffected(weekly({ endDate: '2026-11-30' }), '2026-11-18', 'fromToday')).toBe(4);
   });
 });
+
+describe('aviso propio, metas asociadas y mover una ocurrencia', () => {
+  test('crear con aviso propio y metas asociadas', () => {
+    const st = ok(createEvent(state([]), '2026-11-21', {
+      title: 'Correr', categoryId: 'health', startMin: 600, endMin: 660, note: '', rule: null, endDate: null,
+      reminder: { atStart: false, endLead: 10 }, goalIds: ['g'],
+    }, 'x')).state;
+    expect(st.series[0].reminder).toEqual({ atStart: false, endLead: 10 });
+    expect(st.goals[0].links).toEqual(['w', 'x']);
+  });
+
+  test('editar cambia las metas asociadas (agrega y quita) sin archivar la meta', () => {
+    const st = ok(editEvent(state(), 'w', '2026-11-18', patch(weekly(), { goalIds: [] }), 'always')).state;
+    expect(st.goals[0]).toMatchObject({ links: [], archived: false });
+  });
+
+  test('"A partir de hoy": el aviso y las metas elegidas quedan en la serie nueva', () => {
+    const st = ok(editEvent(state(), 'w', '2026-11-23', patch(weekly(), { reminder: { atStart: true, endLead: 0 }, goalIds: [] }), 'fromToday', 'w2')).state;
+    expect(st.series.find((s) => s.id === 'w2')!.reminder).toEqual({ atStart: true, endLead: 0 });
+    expect(st.series.find((s) => s.id === 'w')!.reminder).toBeNull();
+    expect(st.goals[0].links).toEqual(['w']); // la original conserva su vínculo; la nueva quedó sin metas
+  });
+
+  test('sin aviso ni metas en el cambio, no se tocan', () => {
+    let st = ok(editEvent(state(), 'w', '2026-11-18', patch(weekly(), { reminder: { atStart: false, endLead: 5 } }), 'always')).state;
+    st = ok(editEvent(st, 'w', '2026-11-18', patch(weekly(), { title: 'X' }), 'always')).state;
+    expect(st.series[0].reminder).toEqual({ atStart: false, endLead: 5 });
+    expect(st.goals[0].links).toEqual(['w']);
+  });
+
+  test('mover una ocurrencia de un evento que se repite: solo "Solo hoy"', () => {
+    expect(allowedScopes(weekly(), '2026-11-18', patch(weekly(), { date: '2026-11-19' }))).toEqual(['today']);
+    expect(allowedScopes(weekly(), '2026-11-18', patch(weekly(), { date: '2026-11-18' }))).toEqual(['today', 'fromToday', 'always']);
+    const st = ok(editEvent(state(), 'w', '2026-11-18', patch(weekly(), { date: '2026-11-19' }), 'today', 'm')).state;
+    expect([at(st, '2026-11-18'), at(st, '2026-11-19'), at(st, '2026-11-25')]).toEqual([[], ['Inglés 840-900'], ['Inglés 840-900']]);
+  });
+
+  test('mover y cambiar la repetición a la vez no se permite', () => {
+    const p = patch(weekly(), { date: '2026-11-19', rule: { weekdays: [1], everyWeeks: 1 } });
+    expect(allowedScopes(weekly(), '2026-11-18', p)).toEqual([]);
+    const r = editEvent(state(), 'w', '2026-11-18', p, 'today');
+    expect(r.ok || r.error).toEqual({ kind: 'scope-not-allowed', reason: 'rule-changed' });
+  });
+});

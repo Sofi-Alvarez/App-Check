@@ -4,7 +4,7 @@
 import { DayType, addDays, iso, mondayOf, parseISO, secondsOfDay } from '../agenda';
 import type { Repository } from '../data/repository';
 import { KEYS } from '../data/repository';
-import { categoryById } from '../domain/categories';
+import { categoryById, createCategory } from '../domain/categories';
 import { addDaysISO, weekdayOf } from '../domain/dates';
 import {
   allowedDeleteScopes, allowedScopes, createEvent, daysAffected, deleteEvent, editEvent, modifiedDays,
@@ -220,6 +220,14 @@ export function createV2Engine(repo: Repository, clock: () => Date = () => new D
         return repo.loadAllLog().filter((e) =>
           e.kind === 'start' &&
           (e.bid === id || (e.bid === root && e.day >= s.startDate && (s.endDate === null || e.day <= s.endDate)))).length;
+      },
+      goals: () => state().goals.filter((g) => !g.archived).map((g) => ({ id: g.id, name: g.name, kind: g.kind })),
+      goalIdsFor: (id) => state().goals.filter((g) => g.links.includes(id)).map((g) => g.id),
+      createCategory(input) {
+        const r = createCategory(state(), input);
+        if (!r.ok) return r;
+        save(r.state);
+        return { ok: true, id: r.id };
       },
       snapshot: () => structuredCloneState(state()),
       restore: (snap) => save(snap),

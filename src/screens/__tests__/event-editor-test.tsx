@@ -38,7 +38,7 @@ describe('EventEditor', () => {
     expect(screen.getByText('Nuevo evento')).toBeTruthy();
     await fireEvent.changeText(screen.getByLabelText('Nombre del evento'), 'Correr');
     expect(screen.getByText(/Solo el sábado 21\/11/)).toBeTruthy();
-    await fireEvent.press(screen.getByLabelText('Ejercicio'));
+    await fireEvent.press(screen.getByLabelText('Categoría Ejercicio'));
     await fireEvent.press(screen.getByLabelText('Guardar'));
     expect(onClose).toHaveBeenCalled();
     expect(runs).toEqual(['Se creó "Correr"']);
@@ -114,5 +114,60 @@ describe('EventEditor', () => {
     expect(screen.getByText(/Se superpone con \/jobs y postular/)).toBeTruthy();
     await fireEvent.press(screen.getByLabelText('Guardar'));
     expect(runs).toEqual(['Se creó "Llamada"']);
+  });
+
+  test('crear una categoría desde el editor y quedar elegida', async () => {
+    const { c, engine } = setup();
+    await render(<EventEditor c={c} target={{ id: null, refDate: '2026-11-21', start: 600 }} onClose={jest.fn()} />);
+    await fireEvent.changeText(screen.getByLabelText('Nombre del evento'), 'Leer');
+    await fireEvent.press(screen.getByLabelText('+ Nueva categoría'));
+    await fireEvent.press(screen.getByLabelText('Crear categoría'));
+    expect(screen.getByText('Escribe un nombre para la categoría.')).toBeTruthy();
+    await fireEvent.changeText(screen.getByLabelText('Nombre de la categoría'), 'Ejercicio');
+    await fireEvent.press(screen.getByLabelText('Crear categoría'));
+    expect(screen.getByText('Ya hay una categoría con ese nombre.')).toBeTruthy();
+    await fireEvent.changeText(screen.getByLabelText('Nombre de la categoría'), 'Lectura');
+    await fireEvent.press(screen.getByLabelText('Color Verde azulado'));
+    await fireEvent.press(screen.getByLabelText('Crear categoría'));
+    expect(screen.getByLabelText('Categoría Lectura').props.accessibilityState).toEqual({ selected: true });
+    await fireEvent.press(screen.getByLabelText('Guardar'));
+    const b = engine.blocksFor('2026-11-21')![0];
+    expect(engine.category(b.c)).toMatchObject({ name: 'Lectura', color: 'teal', tracked: true, movable: true });
+  });
+
+  test('metas asociadas y aviso propio se guardan con el evento', async () => {
+    const { c, engine } = setup();
+    await render(<EventEditor c={c} target={{ id: null, refDate: '2026-11-21', start: 600 }} onClose={jest.fn()} />);
+    await fireEvent.changeText(screen.getByLabelText('Nombre del evento'), 'Correr');
+    await fireEvent.press(screen.getByLabelText('Meta Ejercicio'));
+    await fireEvent.press(screen.getByLabelText('Personalizado'));
+    await fireEvent.press(screen.getByLabelText('15 min'));
+    await fireEvent.press(screen.getByLabelText('Guardar'));
+    const b = engine.blocksFor('2026-11-21')![0];
+    expect(b.rem).toEqual({ atStart: true, endLead: 15 });
+    expect(engine.events!.goalIdsFor(b.id)).toEqual(['ejercicio']);
+  });
+
+  test('mover solo este día de un evento que se repite', async () => {
+    const { c, engine, runs } = setup();
+    const ingles = engine.blocksFor('2026-11-23')!.find((b) => b.t === 'Estudio de inglés')!;
+    await render(<EventEditor c={c} target={{ id: ingles.id, refDate: '2026-11-23' }} onClose={jest.fn()} />);
+    await fireEvent.press(screen.getByLabelText('Mover un día después'));
+    expect(screen.getByText(/Se moverá solo el Lunes 23 de noviembre/)).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Guardar'));
+    expect(screen.queryByText('¿Qué días cambia?')).toBeNull(); // un solo alcance posible: se guarda directo
+    expect(runs).toHaveLength(1);
+    expect(engine.blocksFor('2026-11-23')!.some((b) => b.t === 'Estudio de inglés')).toBe(false);
+    expect(engine.blocksFor('2026-11-24')!.some((b) => b.t === 'Estudio de inglés')).toBe(true);
+    expect(engine.blocksFor('2026-11-25')!.some((b) => b.t === 'Estudio de inglés')).toBe(true);
+  });
+
+  test('mover y cambiar la repetición a la vez no deja guardar', async () => {
+    const { c, engine } = setup();
+    const ingles = engine.blocksFor('2026-11-23')!.find((b) => b.t === 'Estudio de inglés')!;
+    await render(<EventEditor c={c} target={{ id: ingles.id, refDate: '2026-11-23' }} onClose={jest.fn()} />);
+    await fireEvent.press(screen.getByLabelText('Mover un día después'));
+    await fireEvent.press(screen.getByLabelText('Todos los días'));
+    expect(screen.getByText('Para mover un solo día, deja la repetición como estaba.')).toBeTruthy();
   });
 });

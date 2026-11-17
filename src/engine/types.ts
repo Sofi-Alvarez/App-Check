@@ -5,6 +5,7 @@
 // fase 3 las reemplace.
 
 import type { DayType } from '../agenda';
+import type { CategoryError, NewCategory } from '../domain/categories';
 import type { EditScope, EventPatch, OpError } from '../domain/events';
 import type { AgendaState, ColorToken, Series } from '../domain/types';
 import type { Settings } from '../storeShape';
@@ -17,6 +18,8 @@ export interface EngineBlock {
   t: string;
   c: string;
   n: string;
+  /** Aviso propio del evento (solo motor v2). `null` o ausente = usar Ajustes. */
+  rem?: { atStart: boolean; endLead: number } | null;
 }
 
 export interface BlockRef {
@@ -134,6 +137,12 @@ export interface EventOps {
   daysAffected(id: string, refDate: string, scope: EditScope): number | null;
   /** Sesiones registradas de este evento (por su id o por el id original). */
   sessionsFor(id: string): number;
+  /** Metas que se pueden asociar (no archivadas). */
+  goals(): { id: string; name: string; kind: 'quantity' | 'time' | 'both' }[];
+  /** Metas asociadas a un evento. */
+  goalIdsFor(id: string): string[];
+  /** Crea una categoría desde el editor (spec 009, sección 4). */
+  createCategory(input: NewCategory): { ok: true; id: string } | { ok: false; error: CategoryError };
   /** Estado completo, para deshacer. */
   snapshot(): AgendaState;
   restore(snap: AgendaState): void;

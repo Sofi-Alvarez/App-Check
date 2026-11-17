@@ -26,8 +26,13 @@ export function dayKindOf(date: string, anchor: string): DayType | null {
 
 export const legacyOf = (state: AgendaState, id: string) => state.legacyBid[id] ?? id;
 
-export const toEngineBlocks = (state: AgendaState, date: string): EngineBlock[] =>
-  buildDay(state, date).map(({ id, s, e, t, c, n }) => ({ id, s, e, t, c, n }));
+export function toEngineBlocks(state: AgendaState, date: string): EngineBlock[] {
+  const rem = new Map(state.series.map((x) => [x.id, x.reminder]));
+  return buildDay(state, date).map(({ id, s, e, t, c, n }) => {
+    const r = rem.get(id);
+    return r ? { id, s, e, t, c, n, rem: r } : { id, s, e, t, c, n };
+  });
+}
 
 /** Tareas de `list` que se pisan con el rango [s, e), sin contar la propia. */
 export function overlaps<T extends { id: string; s: number; e: number }>(list: T[], s: number, e: number, selfId: string | null): T[] {
