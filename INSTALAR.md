@@ -47,3 +47,23 @@ npx eas-cli@latest update --channel preview --environment preview --message "des
 ```
 
 La app descarga la actualización al abrirse y la usa la siguiente vez que la abres (ciérrala y ábrela una o dos veces). Si el cambio agrega un permiso o una librería nativa, hay que generar un APK nuevo y subir `version` en `app.json`.
+
+## Copia de seguridad (T0.1)
+
+En la pestaña Ajustes hay una tarjeta "Copia de seguridad" con el botón "Exportar copia de seguridad". Guarda **todo** lo de la app (agenda editada, hechos, conteos, registro de sesiones y ajustes), a diferencia del CSV de Datos, que solo tiene el registro de uso.
+
+### Cómo publicarla
+
+```bash
+npx eas-cli@latest update --channel preview --environment preview --message "copia de seguridad completa"
+```
+
+No necesita APK nuevo: solo cambia código JavaScript. Cierra y abre la app dos veces para que baje la actualización.
+
+### Cómo probar T0.1 en el teléfono
+
+1. Ajustes → "Exportar copia de seguridad". Debe mostrar el menú de compartir de Android.
+2. Compártela a tu correo o a Drive. Si la copia es grande se manda en varias partes: guarda todas.
+3. El mensaje de abajo debe decir "Copia lista: N claves, X KB". Si dice "incompleta", repite el paso.
+4. Abre el archivo recibido: es texto JSON con `"format":"agenda-backup"` al comienzo.
+5. Comprueba que la cantidad de claves se parece a lo esperado (un día con registro suma un par de claves: `agenda:day:…` y `agenda:log:…`).
