@@ -2,6 +2,8 @@
 
 Fecha: 17/11/2026. Base: código de `main` (Expo / React Native, unas 2.450 líneas), `RESUMEN-03-11-2026.md`, `docs/00-diagnostico-y-flujo.md`, `docs/MODELO-DE-PRODUCTO.md` y dos rondas de investigación de competencia.
 
+**Posicionamiento (aclarado el 17/11/2026).** La app es una **agenda general**, no una agenda de búsqueda de empleo. La rutina de búsqueda que hoy trae es solo el contenido que Sofía cargó. Si sus tareas cambian, la app tiene que seguir funcionando con otros eventos y otras metas. Esto reemplaza la recomendación de "empezar vertical" de `MODELO-DE-PRODUCTO.md` (sección 2.2): la opción B (horizontal) pasa a ser la base. Consecuencia: el competidor real son los planificadores generales (Sunsama, Structured, Tiimo, Marvin), no los trackers de empleo.
+
 **Cómo leerlo.** "Ninguna app" significa que no lo encontré en las fuentes revisadas, no que esté demostrado que no exista. Las fuentes son reseñas y blogs, muchos de competidores. Los puntos marcados con (?) hay que confirmarlos probando la app.
 
 Apps comparadas: Sunsama, Toggl Track, Structured, Tiimo, Motion, Reclaim, Akiflow, Amazing Marvin, Loop Habit Tracker, y trackers de empleo (Huntr, Teal, Careerflow).
@@ -31,6 +33,22 @@ Apps comparadas: Sunsama, Toggl Track, Structured, Tiimo, Motion, Reclaim, Akifl
 | 17 | Datos locales, sin cuenta ni internet | `store.ts` | Parcial: Loop lo tiene; casi todas las demás no |
 | 18 | Actualizaciones por internet (EAS Update) | `app.json`, `eas.json` | No aplica al usuario |
 | 19 | Recurrencia "martes con adscripción cada 14 días" | `agenda.ts` | Parcial: está escrita en el código, no es una regla editable |
+
+### Lo que hoy está atado a tu rutina (hay que generalizar)
+
+Verificado en `src/agenda.ts`:
+
+| Qué está fijo en el código | Dónde | Qué debería ser |
+|---|---|---|
+| 8 categorías cerradas (`rest`, `health`, `work`, `content`, `project`, `english`, `fixed`, `close`) | tipo `Cat` | Categorías que cada persona crea, nombra y colorea |
+| 5 tipos de día (`mwf`, `fri`, `tueOff`, `tueAds`, `thu`) con nombres como "Mar con adscripción" | tipo `DayType`, `TYPE_LABEL`, `LIST_LABEL` | Plantillas de día que el usuario crea y asigna a los días que quiera |
+| Regla de recurrencia escrita a mano (martes cada 14 días, con fecha ancla) | `dayType()` | Reglas editables: días de la semana, cada N semanas, fecha de inicio |
+| Solo lunes a viernes: sábado y domingo devuelven `null` | `dayType()` | Cualquier día de la semana |
+| Metas fijas (post, comentarios, reacciones, cold outreach, follow-up, postulaciones) | `G_BASE`, `G_ADS`, `G_THU`, `GOAL_LABELS` | Metas que el usuario define: nombre, tipo (tiempo o cantidad), objetivo y a qué bloque se asocian |
+| Textos de la agenda de búsqueda de empleo ("/jobs", "Tracker", LinkedIn) | `agenda.ts`, notas de cada bloque | Contenido de ejemplo en una plantilla, no código |
+| Ancla de fecha fija `2026-11-03` | `DEFAULT_SETTINGS` en `store.ts` | Fecha que elige quien configura la recurrencia |
+
+La parte de **motor** (sesiones, eventos, margen, avisos, exportación) ya es genérica. Lo atado a tu rutina es el **contenido** y las reglas de recurrencia.
 
 ---
 
@@ -70,8 +88,10 @@ Ordenadas por cuántas apps lo ofrecen y por cuánto podrían servirle a tu prod
 | 3 | **Datos confirmados separados de los automáticos** | El cambio automático se ve pero no cuenta como dato real. No lo vi en ninguna. Es el principio 4 de tu constitución |
 | 4 | **Empezar una sesión con un toque desde el aviso** | Toggl la inicia desde el bloque dentro de la app. No vi hacerlo desde el aviso |
 | 5 | **Registro de eventos con hora como base** (se calculan después cosas que hoy no sabés que querés medir) | Las demás guardan resultados, no eventos. Exportar es limitado |
-| 6 | **Agenda diaria con cuotas para búsqueda de empleo** (comentarios, postulaciones, contactos) | Los trackers de empleo registran postulaciones, no la rutina diaria ni las cuotas |
+| 6 | **Cuotas diarias medibles dentro de cualquier bloque**, definidas por la persona (hoy son comentarios y contactos; mañana pueden ser páginas leídas, series de ejercicio o llamadas) | Es la versión general del punto 2. Los planificadores no tienen contadores por bloque; Loop tiene contadores pero no agenda |
 | 7 | **Todo lo anterior, local, sin cuenta y exportable** | Solo Loop es local, y no tiene agenda |
+
+Nota: el punto "agenda para búsqueda de empleo" ya no es un diferencial. Con enfoque general, ese espacio lo ocupan Sunsama, Structured y Tiimo, y la ventaja pasa a ser el motor (puntos 1 a 5).
 | 8 | **Revisión semanal con IA sobre tus datos medidos** (propuesta mía, no pedida por vos) | Motion, Structured y Tiimo usan IA para planificar. No vi ninguna que analice tiempos reales y cumplimiento de metas para decirte qué ajustar |
 
 El punto 8 es una idea nueva, no algo que ya hayas pedido: ver `MODELO-DE-PRODUCTO.md`, sección 2.3 (H2: "si cambiaste decisiones por los datos").
@@ -80,6 +100,7 @@ El punto 8 es una idea nueva, no algo que ya hayas pedido: ver `MODELO-DE-PRODUC
 
 ## 4. Decisiones que salen de esto
 
+0. **Generalizar antes que agregar.** Con el enfoque general, lo primero es separar motor y contenido: categorías, tipos de día, recurrencias y metas pasan a ser datos que el usuario crea (ver la tabla de la sección 1). Sin eso, ninguna otra feature sirve para alguien con otra rutina, incluida Sofía si cambia sus tareas.
 1. **Núcleo diferencial a proteger:** los puntos 1, 2, 3 y 5 de la sección 3. Son lo que justifica una app propia.
 2. **Lo que conviene copiar sin culpa** (es práctica común y no es de nadie): sincronización de calendarios, estimación de carga del día, ritual de cierre, plantillas de semana, recurrencias editables.
 3. **Lo que conviene NO copiar:** estrategias configurables al estilo Marvin y auto-agendado de Motion. Chocan con "registrar cuesta un toque".
