@@ -1,3 +1,4 @@
+import type { StartupMigration } from './migration/startup';
 import type { Theme } from './theme';
 import type { Block, BlockInfo } from './agenda';
 import type { Scope, TaskDraft } from './schedule';
@@ -29,4 +30,6 @@ export interface Ctx {
   saveTask: (draft: TaskDraft, scope: Scope) => void;
   deleteTask: (id: string, scope: Scope) => void;
   restoreSchedule: () => void;
+  /** Resultado de la migración al formato nuevo al abrir la app (T1.7). */
+  migration: StartupMigration;
 }

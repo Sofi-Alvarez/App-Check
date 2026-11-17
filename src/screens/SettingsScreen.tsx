@@ -3,6 +3,7 @@ import { Alert, AppState, Linking, ScrollView, Share, StyleSheet, Switch, Text, 
 import { MESES, addDays, dayType, iso, parseISO } from '../agenda';
 import type { Ctx } from '../ctx';
 import { buildBackupParts, parseBackupParts, sizeLabel } from '../domain/backup';
+import { describeMigration, migrationReportText } from '../migration/startup';
 import { askExactAlarms, askNotifications, exactAlarmsGranted, notificationsGranted, scheduleTest } from '../notifications';
 import { loadAllEntries } from '../store';
 import { Btn, Card, Label, Pill } from '../ui';
@@ -63,6 +64,13 @@ export function SettingsScreen({ c }: { c: Ctx }) {
         ? `Copia lista: ${label}, en ${parts.length} ${parts.length === 1 ? 'parte' : 'partes'}. Guárdala fuera del teléfono.`
         : `Se compartieron ${sent} de ${parts.length} partes. La copia está incompleta: vuelve a intentarlo y guarda todas.`,
     );
+  };
+
+  const mig = describeMigration(c.migration);
+  const shareMigration = async () => {
+    try {
+      await Share.share({ title: 'Informe de migración', message: migrationReportText(c.migration, iso(new Date())) });
+    } catch {}
   };
 
   const refresh = useCallback(async () => {
@@ -202,6 +210,19 @@ export function SettingsScreen({ c }: { c: Ctx }) {
           </Text>
         ) : null}
       </Card>
+
+      {mig.ok !== null ? (
+        <Card t={t}>
+          <Label t={t}>{mig.title}</Label>
+          <Text style={[s.optText, { color: mig.ok ? t.ok : t.warn, fontWeight: '700' }]}>{mig.message}</Text>
+          {mig.details.map((line, i) => (
+            <Text key={i} style={[s.note, { color: t.muted }]}>
+              {line}
+            </Text>
+          ))}
+          <Btn t={t} kind="ghost" label="Compartir informe" onPress={shareMigration} />
+        </Card>
+      ) : null}
 
       <Card t={t}>
         <Label t={t}>Agenda</Label>

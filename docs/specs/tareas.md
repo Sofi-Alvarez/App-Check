@@ -90,7 +90,7 @@ Verificación: 45 pruebas pasan en cuatro zonas horarias (Argentina, UTC, Los Á
 | T1.4 ✅ | **Categorías semilla** con las propiedades de 010 §3.1 y su mapeo desde los ocho nombres actuales | S | T1.1 | CA-01 |
 | T1.5 ✅ | **Migración v1 a v2** como función pura (entrada: claves actuales; salida: claves nuevas). Idempotente. Copia previa bajo `backup:v1:`. Maneja el id repetido con horarios distintos y crea `legacyBid` | L | T1.2, T1.3, T1.4 | CA-16, CA-18, CA-19 |
 | T1.6 ✅ | **Plantilla `busqueda-de-empleo`**: sacar de `agenda.ts` el contenido (bloques, notas, metas) y dejarlo como datos de plantilla | M | T1.1 | 010 §3.6 |
-| T1.7 | **Conectar la migración al arranque** (`App.tsx`), con marca de versión, reintento si falla y aviso claro si no se pudo | S | T1.5 | CA-18 |
+| T1.7 ✅ (modo prueba) | **Conectar la migración al arranque** (`App.tsx`), con marca de versión, reintento si falla y aviso claro si no se pudo | S | T1.5 | CA-18 |
 
 **Estado de T1.1 a T1.6 (17/11/2026).** Hechas en código, con 119 pruebas en verde (typecheck, lint y empaquetado para Android también pasan). **La app todavía no usa nada de esto**: se conecta en T1.7, que no está hecha.
 
@@ -114,6 +114,12 @@ Verificación: 45 pruebas pasan en cuatro zonas horarias (Argentina, UTC, Los Á
 **Hallazgo corregido por las pruebas:** con el almacén vacío (instalación nueva), la migración fallaba al calcular el último día a verificar. Está corregido y probado.
 
 **Verificación de la autoverificación:** si se invierten las semanas de los martes, la migración se niega a escribir ("no coincide con la actual en 11 días").
+
+**Estado de T1.7 (17/11/2026).** La migración corre al abrir la app (`src/migration/startup.ts`, conectada en `App.tsx`) y su resultado se ve en una tarjeta de Ajustes con un botón "Compartir informe". Decisiones aceptadas por Sofía para las seis situaciones de la migración (ver arriba).
+
+**Se publica en modo prueba (`MIGRATION_MODE = 'dry-run'`)**: corre la migración completa con los datos reales del teléfono, en memoria, y **no escribe nada**. Motivo: si se aplicara ya, la app seguiría leyendo y editando con el formato viejo hasta la fase 2, y cualquier edición de esos días no llegaría al modelo nuevo. El modo `apply` (escribe de verdad, avisa si se niega y reintenta si se corta) está implementado y probado, y se activa en la entrega E2 junto con la fase 2. El informe compartido no incluye títulos ni notas de las tareas.
+
+Verificación: 132 pruebas (13 de T1.7, incluida una que comprueba que el modo prueba no escribe ni una clave), typecheck, lint, empaquetado para Android y CI.
 
 **Prueba en el teléfono (obligatoria):**
 1. Exportar la copia de seguridad (T0.1) y guardarla fuera del teléfono.

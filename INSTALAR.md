@@ -67,3 +67,31 @@ No necesita APK nuevo: solo cambia código JavaScript. Cierra y abre la app dos 
 3. El mensaje de abajo debe decir "Copia lista: N claves, X KB". Si dice "incompleta", repite el paso.
 4. Abre el archivo recibido: es texto JSON con `"format":"agenda-backup"` al comienzo.
 5. Comprueba que la cantidad de claves se parece a lo esperado (un día con registro suma un par de claves: `agenda:day:…` y `agenda:log:…`).
+
+## Prueba de la migración al formato nuevo (T1.7)
+
+Esta actualización **no cambia tus datos**. Al abrir la app, prueba en memoria si tu agenda se puede pasar al formato nuevo y muestra el resultado en Ajustes.
+
+### Cómo publicarla
+
+```bash
+git pull
+```
+
+```bash
+npm install
+```
+
+```bash
+npx eas-cli@latest update --channel preview --environment preview --message "prueba de migración"
+```
+
+Si la terminal es nueva, primero carga tu token con `export EXPO_TOKEN=...`.
+
+### Qué mirar en el teléfono
+
+1. Cierra y abre la app dos veces.
+2. Ve a Ajustes. Debajo de "Copia de seguridad" aparece la tarjeta **"Formato nuevo de la agenda (prueba)"**.
+3. Si el mensaje está en verde y dice **"Prueba correcta"**, la migración funcionaría con tus datos. Si está en naranja, encontró algo para revisar.
+4. Toca **"Compartir informe"** y mándalo (por ejemplo, a tu correo) para pasárselo a Claude. No incluye títulos ni notas de tus tareas.
+5. Usa la agenda normalmente: nada de lo que ves debería haber cambiado.

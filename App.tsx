@@ -1,10 +1,13 @@
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlockInfo, addDays, blockInfo, iso, parseISO, startOfDayMs } from './src/agenda';
 import type { Ctx } from './src/ctx';
+import { expoKV } from './src/data/expoKV';
+import { createRepository } from './src/data/repository';
+import { StartupMigration, describeMigration, runStartupMigration } from './src/migration/startup';
 import {
   StartTap, askNotifications, cancelTimerAlert, onStartTap, pendingStartTap, rescheduleAgenda, scheduleTimerAlert,
   setupChannels,
@@ -52,12 +55,23 @@ function Root() {
     migrateDoneToIds(st.anchor);
     return st;
   });
+  // Migración al formato nuevo (T1.7). En modo prueba solo calcula y no escribe nada; corre después de
+  // `migrateDoneToIds` (en el estado de arriba) para ver los datos tal como los usa la app.
+  const [migration] = useState<StartupMigration>(() => runStartupMigration(createRepository(expoKV), iso(new Date())));
   const [timer, setTimer] = useState<TimerState>(() => loadTimer());
   const [viewIso, setViewIso] = useState(defaultView);
   const [active, setActive] = useState<ActiveSession | null>(() => loadActive());
   const lastResched = useRef(0);
 
   const bump = useCallback(() => setRev((r) => r + 1), []);
+
+  // Si la migración real (modo aplicar) no pudo hacerse, avisarlo una vez al abrir. En modo prueba solo se muestra en Ajustes.
+  useEffect(() => {
+    if (migration.mode === 'apply' && 'status' in migration && (migration.status === 'refused' || migration.status === 'crashed')) {
+      const v = describeMigration(migration);
+      Alert.alert(v.title, `${v.message}\n\nEl detalle está en Ajustes.`);
+    }
+  }, [migration]);
 
   // Reloj de la app
   useEffect(() => {
@@ -336,7 +350,7 @@ function Root() {
     viewIso, setViewIso, day, toggleDone, changeCount, toggleMute,
     timer, timerLeft, startTimer, toggleTimer, resetTimer,
     active, startSession, pauseResume, finishSession,
-    blocks, saveTask, deleteTask, restoreSchedule,
+    blocks, saveTask, deleteTask, restoreSchedule, migration,
   };
 
   return (
