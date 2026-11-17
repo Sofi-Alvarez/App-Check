@@ -112,3 +112,31 @@ El punto 8 es una idea nueva, no algo que ya hayas pedido: ver `MODELO-DE-PRODUC
 - No hay datos de Habitify, Streaks, Timeular ni Clockify.
 - No investigué apps en español ni con precios para Argentina.
 - Sin confirmar (?): si Amazing Marvin tiene contadores por cantidad; si Sunsama incluye time tracking en todos sus planes; cómo se comporta cada app en Xiaomi.
+
+---
+
+## 6. Gestión de eventos y metas: quién la tiene mejor desarrollada
+
+Agregado el 17/11/2026. Pregunta: qué app tiene mejor resuelto crear, editar y borrar eventos y metas.
+
+**Estado actual de la app (verificado en el código).** Las tareas se pueden crear, editar y eliminar con dos alcances ("Solo hoy" y "Siempre"), pero solo dentro de 5 tipos de día y 8 categorías cerradas. Las metas no se pueden crear, editar ni borrar: solo tienen los botones + y −.
+
+| App | Eventos repetidos: editar y borrar | Fuente |
+|---|---|---|
+| **Google Calendar** | Tres alcances, al editar y al borrar: solo este, este y los siguientes, todos. Cambiar la regla de repetición se aplica a la serie o a "este y los siguientes" | [Ayuda oficial](https://support.google.com/calendar/answer/37115?hl=en&co=GENIE.Platform%3DAndroid) |
+| **Structured** | Tres alcances: solo esta, esta y las siguientes, todas. Es una agenda por bloques, la más parecida a la tuya | [Editar y borrar tareas](https://help.structured.app/en/articles/3320002) |
+| **Sunsama** | "Edit task series", "Stop repeating" y "Delete all instances" | [Recurring tasks](https://www.sunsama.com/pro-tips/recurring-tasks-refresher) |
+| **TickTick** | Reglas de repetición flexibles y calendario coloreado por lista, etiqueta o prioridad | [Features](https://ticktick.com/features?language=en_us) |
+
+| App | Metas | Fuente |
+|---|---|---|
+| **Loop Habit Tracker** | Hábitos medibles con unidad y objetivo diario, frecuencia diaria, semanal o mensual y personalizada, y aviso propio. Gratis, local y de código abierto. Una reseña dice que ya no permite fijar la unidad objetivo; otras fuentes dicen que sí (sin confirmar) | [Repositorio](https://github.com/iSoron/uhabits) |
+| **Habitify** | Objetivo medible por hábito y horarios diarios, semanales o personalizados | [Comparativa](https://griply.app/compare/best-habit-tracker-apps) |
+| **TickTick** | Hábitos con "Goal". No pude confirmar objetivo numérico | [Ayuda](https://help.ticktick.com/articles/7055781805944733696) |
+
+**Conclusión.** Para eventos, el mejor modelo es el de **Google Calendar y Structured** (tres alcances). Para metas, el de **Loop**. Ninguna app junta agenda por bloques con metas por bloque, que es el hueco de esta app.
+
+Las specs que salen de esto:
+
+- `docs/specs/010-generalizacion-del-modelo-de-datos.md`: categorías, series de eventos, excepciones, recurrencias, metas con versiones y plantillas.
+- `docs/specs/009-gestion-de-agenda-y-metas.md`: crear, editar y eliminar con alcance, categorías y metas, con criterios de aceptación.
