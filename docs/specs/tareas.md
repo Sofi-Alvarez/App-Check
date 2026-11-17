@@ -84,13 +84,36 @@ Verificación: 45 pruebas pasan en cuatro zonas horarias (Argentina, UTC, Los Á
 
 | ID | Tarea | Tamaño | Depende de | Cubre |
 |---|---|---|---|---|
-| T1.1 | **Tipos del dominio** en `src/domain/types.ts`: categoría, serie, regla, excepción, meta, versión de meta, plantilla | S | T0.2 | 010 §3 |
-| T1.2 | **Expansión de series**: `occursOn(serie, fecha)` y `buildDay(fecha, estado)` (010 §3.4). Mismo formato de bloque que hoy, para no romper pantallas | M | T1.1 | CA-05, 06, 07, 08, 09, 10 |
-| T1.3 | **Capa de acceso** (`repository`) sobre el almacén actual, con `schemaVersion`, y una versión en memoria para las pruebas | M | T1.1 | 010 §4.1 |
-| T1.4 | **Categorías semilla** con las propiedades de 010 §3.1 y su mapeo desde los ocho nombres actuales | S | T1.1 | CA-01 |
-| T1.5 | **Migración v1 a v2** como función pura (entrada: claves actuales; salida: claves nuevas). Idempotente. Copia previa bajo `backup:v1:`. Maneja el id repetido con horarios distintos y crea `legacyBid` | L | T1.2, T1.3, T1.4 | CA-16, CA-18, CA-19 |
-| T1.6 | **Plantilla `busqueda-de-empleo`**: sacar de `agenda.ts` el contenido (bloques, notas, metas) y dejarlo como datos de plantilla | M | T1.1 | 010 §3.6 |
+| T1.1 ✅ | **Tipos del dominio** en `src/domain/types.ts`: categoría, serie, regla, excepción, meta, versión de meta, plantilla | S | T0.2 | 010 §3 |
+| T1.2 ✅ | **Expansión de series**: `occursOn(serie, fecha)` y `buildDay(fecha, estado)` (010 §3.4). Mismo formato de bloque que hoy, para no romper pantallas | M | T1.1 | CA-05, 06, 07, 08, 09, 10 |
+| T1.3 ✅ | **Capa de acceso** (`repository`) sobre el almacén actual, con `schemaVersion`, y una versión en memoria para las pruebas | M | T1.1 | 010 §4.1 |
+| T1.4 ✅ | **Categorías semilla** con las propiedades de 010 §3.1 y su mapeo desde los ocho nombres actuales | S | T1.1 | CA-01 |
+| T1.5 ✅ | **Migración v1 a v2** como función pura (entrada: claves actuales; salida: claves nuevas). Idempotente. Copia previa bajo `backup:v1:`. Maneja el id repetido con horarios distintos y crea `legacyBid` | L | T1.2, T1.3, T1.4 | CA-16, CA-18, CA-19 |
+| T1.6 ✅ | **Plantilla `busqueda-de-empleo`**: sacar de `agenda.ts` el contenido (bloques, notas, metas) y dejarlo como datos de plantilla | M | T1.1 | 010 §3.6 |
 | T1.7 | **Conectar la migración al arranque** (`App.tsx`), con marca de versión, reintento si falla y aviso claro si no se pudo | S | T1.5 | CA-18 |
+
+**Estado de T1.1 a T1.6 (17/11/2026).** Hechas en código, con 119 pruebas en verde (typecheck, lint y empaquetado para Android también pasan). **La app todavía no usa nada de esto**: se conecta en T1.7, que no está hecha.
+
+| Tarea | Dónde | Qué quedó |
+|---|---|---|
+| T1.1 | `src/domain/types.ts`, `src/domain/dates.ts` | Tipos del modelo v2 (categoría, serie, regla, excepción, meta con versiones, plantilla, ajustes v2) y fechas sin zona horaria |
+| T1.2 | `src/domain/recurrence.ts` | `occursOn`, `buildDay` y validación de series y reglas. Criterios CA-05 a CA-10 |
+| T1.3 | `src/data/` | Capa de acceso sobre un almacén clave-valor intercambiable (`expoKV` en el teléfono, `memoryKV` en pruebas). Claves nuevas `agenda2:*` y `agenda:schemaVersion`; las de uso de la v1 no cambian. Una clave dañada lanza un error explícito |
+| T1.4 | `src/domain/categories.ts` | Las 8 categorías con sus ids, nombres de la leyenda, colores como tokens y propiedades que reproducen el comportamiento actual. Criterio CA-01 |
+| T1.5 | `src/migration/v1-to-v2.ts` | Migración pura con autoverificación día por día (del primer dato a 8 semanas en el futuro) y reintento seguro desde la copia. Criterios CA-16, CA-18 y CA-19 |
+| T1.6 | `src/domain/templates/` | Tu rutina como datos (`busqueda-de-empleo.json`, 66 series y 8 metas), la plantilla vacía y `applyTemplate`. Aplicada desde un martes con adscripción reproduce la agenda original durante 8 semanas |
+
+**Decisiones tomadas en la implementación (para revisar):**
+1. **Marcas de hecho de una serie separada.** La spec decía que `agenda:day:*` no cambia, pero si una tarea se separa en dos series (caso `u-yoga`), la marca de hecho del jueves quedaría apuntando a un id que ese día ya no existe. La migración reescribe solo esos días y lo informa en `renamedDone`. La copia guarda el valor original.
+2. **Metas por día de la semana.** La v1 distinguía martes con y sin adscripción; la v2 usa días de la semana. Solo afecta a "Postulaciones", que no tiene objetivo.
+3. **"Proyecto" y "Ejercicio"** pasan a metas de tiempo semanales sin objetivo, asociadas a las series de esas categorías. La v1 calculaba horas planificadas hechas y sesiones marcadas; el cálculo nuevo se decide en T2.5.
+4. **Tarea "Solo hoy" con un id que ya usa otra serie:** recibe un id propio (`<id>@<fecha>`) vinculado al original en `legacyBid`.
+5. **Ediciones de sábado o domingo** (la v1 nunca las mostró): no se migran, se informan y quedan en la copia.
+6. **Categorías con un id desconocido** en la agenda guardada: se crean como categoría nueva con el id como nombre, para no perder el evento.
+
+**Hallazgo corregido por las pruebas:** con el almacén vacío (instalación nueva), la migración fallaba al calcular el último día a verificar. Está corregido y probado.
+
+**Verificación de la autoverificación:** si se invierten las semanas de los martes, la migración se niega a escribir ("no coincide con la actual en 11 días").
 
 **Prueba en el teléfono (obligatoria):**
 1. Exportar la copia de seguridad (T0.1) y guardarla fuera del teléfono.

@@ -1,0 +1,1409 @@
+{
+  "id": "busqueda-de-empleo",
+  "name": "Búsqueda de empleo, 5 días",
+  "description": "Rutina de lunes a viernes para una búsqueda activa: postulaciones, contactos, contenido en LinkedIn, proyecto propio e inglés. Incluye martes alternos con una actividad fija y cuotas diarias de contactos y comentarios.",
+  "language": "es",
+  "categories": [
+    {
+      "id": "work",
+      "name": "Búsqueda",
+      "color": "blue",
+      "movable": true,
+      "tracked": true,
+      "marginPreference": "normal",
+      "archived": false
+    },
+    {
+      "id": "content",
+      "name": "Contenido",
+      "color": "pink",
+      "movable": true,
+      "tracked": true,
+      "marginPreference": "normal",
+      "archived": false
+    },
+    {
+      "id": "project",
+      "name": "Proyecto",
+      "color": "teal",
+      "movable": true,
+      "tracked": true,
+      "marginPreference": "normal",
+      "archived": false
+    },
+    {
+      "id": "health",
+      "name": "Ejercicio",
+      "color": "green",
+      "movable": true,
+      "tracked": true,
+      "marginPreference": "normal",
+      "archived": false
+    },
+    {
+      "id": "english",
+      "name": "Inglés",
+      "color": "amber",
+      "movable": true,
+      "tracked": true,
+      "marginPreference": "normal",
+      "archived": false
+    },
+    {
+      "id": "fixed",
+      "name": "Fijo o viaje",
+      "color": "slate",
+      "movable": false,
+      "tracked": false,
+      "marginPreference": "normal",
+      "archived": false
+    },
+    {
+      "id": "rest",
+      "name": "Pausa o comida",
+      "color": "gray",
+      "movable": true,
+      "tracked": false,
+      "marginPreference": "avoid",
+      "archived": false
+    },
+    {
+      "id": "close",
+      "name": "Cierre del día",
+      "color": "blue",
+      "movable": true,
+      "tracked": true,
+      "marginPreference": "normal",
+      "archived": false
+    }
+  ],
+  "series": [
+    {
+      "id": "mwf:420",
+      "title": "Rutina de mañana",
+      "categoryId": "rest",
+      "startMin": 420,
+      "endMin": 480,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          1,
+          3
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "mwf:480",
+      "title": "Ejercicio",
+      "categoryId": "health",
+      "startMin": 480,
+      "endMin": 540,
+      "note": "Fuera de casa. Incluye el trayecto.",
+      "rule": {
+        "weekdays": [
+          1,
+          3
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "mwf:540",
+      "title": "Plan del día y bandeja",
+      "categoryId": "work",
+      "startMin": 540,
+      "endMin": 555,
+      "note": "Responde a reclutadores y mira las 3 prioridades de hoy.",
+      "rule": {
+        "weekdays": [
+          1,
+          3
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "mwf:555",
+      "title": "LinkedIn: publicar y social",
+      "categoryId": "content",
+      "startMin": 555,
+      "endMin": 600,
+      "note": "Publica el post ya redactado. 5 comentarios con aporte y 10 reacciones.",
+      "rule": {
+        "weekdays": [
+          1,
+          3
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "mwf:600",
+      "title": "/jobs y postular",
+      "categoryId": "work",
+      "startMin": 600,
+      "endMin": 690,
+      "note": "Corre /jobs y postula a lo que salga. Si no hay ofertas, el tiempo que sobra pasa a proyecto.",
+      "rule": {
+        "weekdays": [
+          1,
+          3
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "mwf:690",
+      "title": "Pausa",
+      "categoryId": "rest",
+      "startMin": 690,
+      "endMin": 705,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          1,
+          3
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "mwf:705",
+      "title": "Cold outreach",
+      "categoryId": "work",
+      "startMin": 705,
+      "endMin": 765,
+      "note": "10 mensajes. Incluye reclutadores nuevos fuera de tu red.",
+      "rule": {
+        "weekdays": [
+          1,
+          3
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "mwf:765",
+      "title": "Cargar el Tracker",
+      "categoryId": "work",
+      "startMin": 765,
+      "endMin": 780,
+      "note": "Estado de postulaciones, respuestas, a quién escribiste y fecha del próximo follow-up.",
+      "rule": {
+        "weekdays": [
+          1,
+          3
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "mwf:780",
+      "title": "Almuerzo",
+      "categoryId": "rest",
+      "startMin": 780,
+      "endMin": 840,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          1,
+          3
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "mwf:840",
+      "title": "Estudio de inglés",
+      "categoryId": "english",
+      "startMin": 840,
+      "endMin": 900,
+      "note": "60 min.",
+      "rule": {
+        "weekdays": [
+          1,
+          3
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "mwf:900",
+      "title": "Follow-up a tu red",
+      "categoryId": "work",
+      "startMin": 900,
+      "endMin": 950,
+      "note": "10 mensajes a reclutadores que ya están en tu red.",
+      "rule": {
+        "weekdays": [
+          1,
+          3
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "mwf:950",
+      "title": "Proyecto de diseño",
+      "categoryId": "project",
+      "startMin": 950,
+      "endMin": 1040,
+      "note": "90 min, más lo que sobre de /jobs.",
+      "rule": {
+        "weekdays": [
+          1,
+          3
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "mwf:1040",
+      "title": "Capturas y post de mañana",
+      "categoryId": "content",
+      "startMin": 1040,
+      "endMin": 1070,
+      "note": "Redáctalo con IA y déjalo listo para mañana. Si mañana es martes de adscripción o jueves, déjalo programado en LinkedIn.",
+      "rule": {
+        "weekdays": [
+          1,
+          3
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "mwf:1070",
+      "title": "Cierre y plan de mañana",
+      "categoryId": "close",
+      "startMin": 1070,
+      "endMin": 1080,
+      "note": "Marca lo cumplido, anota lo que quedó pendiente y por qué, elige 3 prioridades de mañana y cierra la compu.",
+      "rule": {
+        "weekdays": [
+          1,
+          3
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "tueOff:420",
+      "title": "Rutina de mañana",
+      "categoryId": "rest",
+      "startMin": 420,
+      "endMin": 480,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueOff:480",
+      "title": "Ejercicio",
+      "categoryId": "health",
+      "startMin": 480,
+      "endMin": 540,
+      "note": "Fuera de casa. Incluye el trayecto.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueOff:540",
+      "title": "Plan del día y bandeja",
+      "categoryId": "work",
+      "startMin": 540,
+      "endMin": 555,
+      "note": "Responde a reclutadores y mira las 3 prioridades de hoy.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueOff:555",
+      "title": "LinkedIn: publicar y social",
+      "categoryId": "content",
+      "startMin": 555,
+      "endMin": 600,
+      "note": "Publica el post ya redactado. 5 comentarios con aporte y 10 reacciones.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueOff:600",
+      "title": "/jobs y postular",
+      "categoryId": "work",
+      "startMin": 600,
+      "endMin": 690,
+      "note": "Corre /jobs y postula a lo que salga. Si no hay ofertas, el tiempo que sobra pasa a proyecto.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueOff:690",
+      "title": "Pausa",
+      "categoryId": "rest",
+      "startMin": 690,
+      "endMin": 705,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueOff:705",
+      "title": "Cold outreach",
+      "categoryId": "work",
+      "startMin": 705,
+      "endMin": 765,
+      "note": "10 mensajes. Incluye reclutadores nuevos fuera de tu red.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueOff:765",
+      "title": "Cargar el Tracker",
+      "categoryId": "work",
+      "startMin": 765,
+      "endMin": 780,
+      "note": "Estado de postulaciones, respuestas, a quién escribiste y fecha del próximo follow-up.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueOff:780",
+      "title": "Almuerzo",
+      "categoryId": "rest",
+      "startMin": 780,
+      "endMin": 840,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueOff:840",
+      "title": "Estudio de inglés",
+      "categoryId": "english",
+      "startMin": 840,
+      "endMin": 870,
+      "note": "30 min.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueOff:870",
+      "title": "Proyecto de diseño",
+      "categoryId": "project",
+      "startMin": 870,
+      "endMin": 900,
+      "note": "30 min.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueOff:900",
+      "title": "Follow-up a tu red",
+      "categoryId": "work",
+      "startMin": 900,
+      "endMin": 950,
+      "note": "10 mensajes a reclutadores que ya están en tu red.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueOff:950",
+      "title": "Proyecto de diseño",
+      "categoryId": "project",
+      "startMin": 950,
+      "endMin": 1040,
+      "note": "90 min, más lo que sobre de /jobs.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueOff:1040",
+      "title": "Capturas y post de mañana",
+      "categoryId": "content",
+      "startMin": 1040,
+      "endMin": 1070,
+      "note": "Redáctalo con IA. Mañana es miércoles: puedes publicarlo en vivo.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueOff:1070",
+      "title": "Cierre y plan de mañana",
+      "categoryId": "close",
+      "startMin": 1070,
+      "endMin": 1080,
+      "note": "Marca lo cumplido, anota lo que quedó pendiente y por qué, elige 3 prioridades de mañana y cierra la compu.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueOff:1080",
+      "title": "Cena",
+      "categoryId": "rest",
+      "startMin": 1080,
+      "endMin": 1120,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueOff:1120",
+      "title": "Clase de inglés",
+      "categoryId": "fixed",
+      "startMin": 1120,
+      "endMin": 1180,
+      "note": "Virtual.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 1
+    },
+    {
+      "id": "tueAds:360",
+      "title": "Rutina de mañana",
+      "categoryId": "rest",
+      "startMin": 360,
+      "endMin": 420,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "tueAds:420",
+      "title": "Viaje",
+      "categoryId": "fixed",
+      "startMin": 420,
+      "endMin": 540,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "tueAds:540",
+      "title": "Adscripción de políticas educativas",
+      "categoryId": "fixed",
+      "startMin": 540,
+      "endMin": 720,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "tueAds:720",
+      "title": "Viaje",
+      "categoryId": "fixed",
+      "startMin": 720,
+      "endMin": 840,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "tueAds:840",
+      "title": "Almuerzo",
+      "categoryId": "rest",
+      "startMin": 840,
+      "endMin": 900,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "tueAds:900",
+      "title": "LinkedIn y social",
+      "categoryId": "content",
+      "startMin": 900,
+      "endMin": 930,
+      "note": "El post ya quedó programado el lunes. 5 comentarios y 10 reacciones.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "tueAds:930",
+      "title": "Cold outreach",
+      "categoryId": "work",
+      "startMin": 930,
+      "endMin": 990,
+      "note": "10 mensajes. Incluye reclutadores nuevos fuera de tu red.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "tueAds:990",
+      "title": "Follow-up a tu red",
+      "categoryId": "work",
+      "startMin": 990,
+      "endMin": 1035,
+      "note": "10 mensajes a reclutadores que ya están en tu red.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "tueAds:1035",
+      "title": "Cargar el Tracker",
+      "categoryId": "work",
+      "startMin": 1035,
+      "endMin": 1050,
+      "note": "Registra a quién escribiste y fecha del próximo follow-up.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "tueAds:1050",
+      "title": "Estudio de inglés",
+      "categoryId": "english",
+      "startMin": 1050,
+      "endMin": 1080,
+      "note": "30 min.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "tueAds:1080",
+      "title": "Cena",
+      "categoryId": "rest",
+      "startMin": 1080,
+      "endMin": 1120,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "tueAds:1120",
+      "title": "Clase de inglés",
+      "categoryId": "fixed",
+      "startMin": 1120,
+      "endMin": 1180,
+      "note": "Virtual.",
+      "rule": {
+        "weekdays": [
+          2
+        ],
+        "everyWeeks": 2
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "thu:360",
+      "title": "Rutina de mañana",
+      "categoryId": "rest",
+      "startMin": 360,
+      "endMin": 420,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          4
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "thu:420",
+      "title": "Viaje",
+      "categoryId": "fixed",
+      "startMin": 420,
+      "endMin": 540,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          4
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "thu:540",
+      "title": "Proyectual",
+      "categoryId": "fixed",
+      "startMin": 540,
+      "endMin": 840,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          4
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "thu:840",
+      "title": "Viaje",
+      "categoryId": "fixed",
+      "startMin": 840,
+      "endMin": 1020,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          4
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "thu:1020",
+      "title": "Almuerzo",
+      "categoryId": "rest",
+      "startMin": 1020,
+      "endMin": 1050,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          4
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "thu:1050",
+      "title": "Cold outreach",
+      "categoryId": "work",
+      "startMin": 1050,
+      "endMin": 1080,
+      "note": "10 mensajes cortos, unos 3 min cada uno. Usa tu plantilla base. Regístralos en el Tracker el viernes.",
+      "rule": {
+        "weekdays": [
+          4
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "thu:1080",
+      "title": "Estudio de inglés",
+      "categoryId": "english",
+      "startMin": 1080,
+      "endMin": 1110,
+      "note": "30 min antes de la clase.",
+      "rule": {
+        "weekdays": [
+          4
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "thu:1110",
+      "title": "Cena rápida",
+      "categoryId": "rest",
+      "startMin": 1110,
+      "endMin": 1120,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          4
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "thu:1120",
+      "title": "Clase de inglés",
+      "categoryId": "fixed",
+      "startMin": 1120,
+      "endMin": 1180,
+      "note": "Virtual.",
+      "rule": {
+        "weekdays": [
+          4
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "fri:420",
+      "title": "Rutina de mañana",
+      "categoryId": "rest",
+      "startMin": 420,
+      "endMin": 480,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          5
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "fri:480",
+      "title": "Ejercicio",
+      "categoryId": "health",
+      "startMin": 480,
+      "endMin": 540,
+      "note": "Fuera de casa. Incluye el trayecto.",
+      "rule": {
+        "weekdays": [
+          5
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "fri:540",
+      "title": "Plan del día y bandeja",
+      "categoryId": "work",
+      "startMin": 540,
+      "endMin": 555,
+      "note": "Responde a reclutadores y mira las 3 prioridades de hoy.",
+      "rule": {
+        "weekdays": [
+          5
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "fri:555",
+      "title": "LinkedIn: publicar y social",
+      "categoryId": "content",
+      "startMin": 555,
+      "endMin": 600,
+      "note": "Publica el post ya redactado. 5 comentarios con aporte y 10 reacciones.",
+      "rule": {
+        "weekdays": [
+          5
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "fri:600",
+      "title": "/jobs y postular",
+      "categoryId": "work",
+      "startMin": 600,
+      "endMin": 690,
+      "note": "Corre /jobs y postula a lo que salga. Si no hay ofertas, el tiempo que sobra pasa a proyecto.",
+      "rule": {
+        "weekdays": [
+          5
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "fri:690",
+      "title": "Pausa",
+      "categoryId": "rest",
+      "startMin": 690,
+      "endMin": 705,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          5
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "fri:705",
+      "title": "Cold outreach",
+      "categoryId": "work",
+      "startMin": 705,
+      "endMin": 765,
+      "note": "10 mensajes. Incluye reclutadores nuevos fuera de tu red.",
+      "rule": {
+        "weekdays": [
+          5
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "fri:765",
+      "title": "Cargar el Tracker",
+      "categoryId": "work",
+      "startMin": 765,
+      "endMin": 780,
+      "note": "Estado de postulaciones, respuestas, a quién escribiste y fecha del próximo follow-up.",
+      "rule": {
+        "weekdays": [
+          5
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "fri:780",
+      "title": "Almuerzo",
+      "categoryId": "rest",
+      "startMin": 780,
+      "endMin": 840,
+      "note": "",
+      "rule": {
+        "weekdays": [
+          5
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "fri:840",
+      "title": "Estudio de inglés",
+      "categoryId": "english",
+      "startMin": 840,
+      "endMin": 900,
+      "note": "60 min.",
+      "rule": {
+        "weekdays": [
+          5
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "fri:900",
+      "title": "Follow-up a tu red",
+      "categoryId": "work",
+      "startMin": 900,
+      "endMin": 950,
+      "note": "10 mensajes a reclutadores que ya están en tu red.",
+      "rule": {
+        "weekdays": [
+          5
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "fri:950",
+      "title": "Proyecto de diseño",
+      "categoryId": "project",
+      "startMin": 950,
+      "endMin": 1040,
+      "note": "90 min, más lo que sobre de /jobs.",
+      "rule": {
+        "weekdays": [
+          5
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "fri:1040",
+      "title": "Capturas y post de mañana",
+      "categoryId": "content",
+      "startMin": 1040,
+      "endMin": 1070,
+      "note": "Redáctalo con IA para el lunes.",
+      "rule": {
+        "weekdays": [
+          5
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    },
+    {
+      "id": "fri:1070",
+      "title": "Cierre y plan de mañana",
+      "categoryId": "close",
+      "startMin": 1070,
+      "endMin": 1080,
+      "note": "Marca lo cumplido, anota lo que quedó pendiente y por qué, elige 3 prioridades de mañana y cierra la compu. Mira los totales de la semana en la pestaña Metas.",
+      "rule": {
+        "weekdays": [
+          5
+        ],
+        "everyWeeks": 1
+      },
+      "reminder": null,
+      "archived": false,
+      "weekOffset": 0
+    }
+  ],
+  "goals": [
+    {
+      "id": "post",
+      "name": "Post",
+      "kind": "quantity",
+      "unit": "posts",
+      "links": [],
+      "reminder": null,
+      "archived": false,
+      "versions": [
+        {
+          "effectiveFrom": "",
+          "target": 1,
+          "period": "day",
+          "activeDays": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        }
+      ]
+    },
+    {
+      "id": "com",
+      "name": "Comentarios",
+      "kind": "quantity",
+      "unit": "comentarios",
+      "links": [],
+      "reminder": null,
+      "archived": false,
+      "versions": [
+        {
+          "effectiveFrom": "",
+          "target": 5,
+          "period": "day",
+          "activeDays": [
+            1,
+            2,
+            3,
+            5
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rea",
+      "name": "Reacciones",
+      "kind": "quantity",
+      "unit": "reacciones",
+      "links": [],
+      "reminder": null,
+      "archived": false,
+      "versions": [
+        {
+          "effectiveFrom": "",
+          "target": 10,
+          "period": "day",
+          "activeDays": [
+            1,
+            2,
+            3,
+            5
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cold",
+      "name": "Cold outreach",
+      "kind": "quantity",
+      "unit": "mensajes",
+      "links": [],
+      "reminder": null,
+      "archived": false,
+      "versions": [
+        {
+          "effectiveFrom": "",
+          "target": 10,
+          "period": "day",
+          "activeDays": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fol",
+      "name": "Follow-up",
+      "kind": "quantity",
+      "unit": "mensajes",
+      "links": [],
+      "reminder": null,
+      "archived": false,
+      "versions": [
+        {
+          "effectiveFrom": "",
+          "target": 10,
+          "period": "day",
+          "activeDays": [
+            1,
+            2,
+            3,
+            5
+          ]
+        }
+      ]
+    },
+    {
+      "id": "apl",
+      "name": "Postulaciones",
+      "kind": "quantity",
+      "unit": "postulaciones",
+      "links": [],
+      "reminder": null,
+      "archived": false,
+      "versions": [
+        {
+          "effectiveFrom": "",
+          "target": null,
+          "period": "day",
+          "activeDays": [
+            1,
+            2,
+            3,
+            5
+          ]
+        }
+      ]
+    },
+    {
+      "id": "proyecto",
+      "name": "Proyecto",
+      "kind": "time",
+      "unit": "",
+      "links": [
+        "mwf:950",
+        "tueOff:870",
+        "tueOff:950",
+        "fri:950"
+      ],
+      "reminder": null,
+      "archived": false,
+      "versions": [
+        {
+          "effectiveFrom": "",
+          "target": null,
+          "period": "week",
+          "activeDays": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ejercicio",
+      "name": "Ejercicio",
+      "kind": "time",
+      "unit": "",
+      "links": [
+        "mwf:480",
+        "tueOff:480",
+        "fri:480"
+      ],
+      "reminder": null,
+      "archived": false,
+      "versions": [
+        {
+          "effectiveFrom": "",
+          "target": null,
+          "period": "week",
+          "activeDays": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        }
+      ]
+    }
+  ]
+}
