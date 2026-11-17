@@ -59,7 +59,7 @@ Las fases 4 y 5 se pueden hacer en cualquier orden entre sí una vez terminada l
 | T0.1 ✅ | **Exportar copia de seguridad completa** (JSON con todas las claves del almacén) desde Ajustes, además del CSV de uso. Hoy el CSV solo tiene el registro de uso, no la agenda editada ni las marcas de hecho. Se publica por actualización por internet *antes* de cualquier migración | S | nada | seguridad de CA-18 |
 | T0.2 ✅ | **Infraestructura de pruebas.** Instalar el corredor de pruebas con `npx expo install` (según la versión de Expo, confirmar en la documentación de SDK 58 antes) y agregar el script `test`. Solo dependencias de desarrollo: no hace falta un APK nuevo | S | nada | base de todos los CA y CG |
 | T0.3 ✅ | **Script `typecheck`** en `package.json` (`tsc --noEmit`) y un flujo en GitHub Actions que corra typecheck, lint y pruebas en cada push | S | T0.2 | calidad |
-| T0.4 | **Datos de prueba.** Fixtures sintéticas generadas desde `defaultBlocks()` y un registro de uso de ejemplo. No se suben datos reales de personas ni notas privadas al repositorio | S | T0.2 | CA-16, CA-19 |
+| T0.4 ✅ | **Datos de prueba.** Fixtures sintéticas generadas desde `defaultBlocks()` y un registro de uso de ejemplo. No se suben datos reales de personas ni notas privadas al repositorio | S | T0.2 | CA-16, CA-19 |
 
 **Estado de T0.1 (17/11/2026).** Implementada en `src/domain/backup.ts` (partes, verificación y lectura de copias, 11 comprobaciones pasadas con un script provisional), `loadAllEntries()` en `src/store.ts` y una tarjeta "Copia de seguridad" en Ajustes. Typecheck y lint pasan. **Publicada y probada en el Redmi (17/11/2026):** la actualización por internet llegó y la exportación mostró "Copia lista: 21 claves, 68 KB, en 1 parte". Sofía confirmó que el texto empieza con `"format":"agenda-backup"` y que la guardó en Google Drive (una primera copia enviada por WhatsApp puede haber quedado cortada por el límite de largo de mensaje, por eso se rehízo en Drive). **T0.1 cerrada.** Se decidió no achicar las partes por ahora. No hay restauración todavía: la copia sirve para recuperar a mano y para la fase 1.
 
@@ -67,7 +67,16 @@ Las fases 4 y 5 se pueden hacer en cualquier orden entre sí una vez terminada l
 
 **Estado de T0.3 (17/11/2026).** Script `npm run typecheck` (`tsc --noEmit`) y flujo `.github/workflows/ci.yml` que corre `npm ci`, typecheck, lint y pruebas en cada push y pull request, con Node 22 (cumple el `^22.13.0` que pide Expo SDK 58). No compila ni publica la app. Verificado en local: los tres pasos y `npm ci` pasan.
 
-**Salida de la fase:** podés bajar una copia de seguridad desde el teléfono, y `npm test` y `npm run typecheck` corren vacíos pero en verde.
+**Estado de T0.4 (17/11/2026).** Tres piezas:
+- `src/__fixtures__/v1-store.ts`: almacén v1 sintético armado desde `defaultBlocks()` (ids reales, datos inventados). Incluye a propósito cada caso que la migración tiene que resolver: un bloque original con horario editado cuyo id ya no coincide con su inicio, una tarea nueva en dos listas con el mismo horario (`u-lectura`), el caso difícil de la misma tarea con horarios distintos (`u-yoga`), una eliminación con "Siempre", una eliminación y un agregado "Solo hoy", un margen aceptado y uno rechazado, una sesión cerrada sola, una abierta, pausas, conteos sueltos y marcas de hecho y deshecho. `EXPECTED` guarda la línea base calculada a mano (46 eventos, 9 sesiones, etc.) para el criterio CA-16.
+- `src/migration/v1-reader.ts`: lector puro del formato actual, que reproduce `listFor()` y `blocksFor()`. Nada se descarta en silencio: lo que no reconoce o no puede leer queda en `unknown`. Adelanta parte de T1.5.
+- `src/storeShape.ts`: los tipos y valores por defecto del almacén pasaron a un archivo sin dependencias de Expo, para poder usarlos en pruebas. `store.ts` los reexporta, así que la app no cambia.
+
+Hallazgo: los eventos guardan el horario planificado del momento del toque. Si después se aplica un margen ese día, la agenda del día cambia y los eventos anteriores conservan el horario viejo. La migración debe tratarlos como historia y no corregirlos (prueba incluida).
+
+Verificación: 45 pruebas pasan en cuatro zonas horarias (Argentina, UTC, Los Ángeles y Kiritimati), y fallan si se rompe el lector (probado quitando las ediciones de un día y descartando claves desconocidas). Typecheck y lint limpios.
+
+**Salida de la fase:** podés bajar una copia de seguridad desde el teléfono, y `npm test` y `npm run typecheck` corren vacíos pero en verde. **Fase 0 completa (17/11/2026).**
 
 ---
 
