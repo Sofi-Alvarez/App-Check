@@ -1,15 +1,9 @@
-// Motor de agenda (fase 2). Las pantallas actuales hablan con este contrato y no saben si los datos vienen del
-// formato viejo (v1) o del modelo nuevo (v2). La app elige el motor al arrancar.
-//
-// El contrato conserva el vocabulario de las pantallas actuales ("Solo hoy", "Siempre" con tipos de día) hasta que la
-// fase 3 las reemplace.
+// Motor de agenda: el contrato con el que las pantallas leen y cambian la agenda sobre el modelo v2.
 
-import type { DayType } from '../agenda';
 import type { CategoryError, CategoryOpError, NewCategory } from '../domain/categories';
 import type { EditScope, EventPatch, OpError } from '../domain/events';
 import type { GoalError, GoalInput, GoalScope } from '../domain/goals';
-import type { AgendaState, ColorToken, GoalVersion, Series } from '../domain/types';
-import type { Settings } from '../storeShape';
+import type { AgendaState, ColorToken, GoalVersion, Series, SettingsV2 } from '../domain/types';
 
 /** Un evento ubicado en un día, con los campos cortos que usan las pantallas. `c` es el id de la categoría. */
 export interface EngineBlock {
@@ -31,18 +25,6 @@ export interface BlockRef {
   planS: number;
   planE: number;
 }
-
-export interface TaskDraft {
-  /** `null` = tarea nueva. */
-  id: string | null;
-  t: string;
-  c: string;
-  s: number;
-  e: number;
-  n: string;
-}
-
-export type Scope = { kind: 'today' } | { kind: 'always'; lists: DayType[] };
 
 export interface CategoryInfo {
   id: string;
@@ -90,35 +72,22 @@ export interface WeekRow {
 }
 
 export interface AgendaEngine {
-  kind: 'v1' | 'v2';
-  /** Eventos de un día. `null` = día sin agenda (sábado y domingo sin eventos). */
-  blocksFor(date: string): EngineBlock[] | null;
-  /** Tipo de día del vocabulario actual (para la etiqueta del día y los "Siempre"). */
-  dayKind(date: string): DayType | null;
-  /** Lista vigente de un tipo de día (para avisar superposiciones al elegir "Siempre"). */
-  listFor(kind: DayType): EngineBlock[];
+  /** Eventos de un día (vacío si no hay). */
+  blocksFor(date: string): EngineBlock[];
   /** Evento que toca a esa hora. */
   currentBlock(now: Date): BlockRef | null;
-  saveTask(draft: TaskDraft, scope: Scope, date: string): string;
-  deleteTask(id: string, scope: Scope, date: string): void;
-  /** Descarta las ediciones y vuelve a la agenda original. No toca el registro de uso. */
-  restore(): void;
   planMargin(day: string, aId: string, endMin: number): MarginPlan | null;
   applyMargin(plan: MarginPlan, targetId: string): boolean;
   category(id: string): CategoryInfo;
-  /** Categorías para la leyenda y el selector, sin repetir color (como la leyenda actual). */
+  /** Categorías para la leyenda, sin repetir color. */
   legend(): CategoryInfo[];
   goalsFor(date: string): GoalCard[];
   goalName(key: string): string;
   weekSummary(viewIso: string): WeekRow[];
-  /** Próximos martes con adscripción a partir de hoy. */
-  upcomingTueAds(n: number, today: string): string[];
-  /** Mueve la alternancia de los martes una semana (adelante o atrás). */
-  shiftTuesdays(days: number): void;
-  loadSettings(): Settings;
-  saveSettings(s: Settings): void;
-  /** Gestión de eventos con alcance (fase 3). Solo existe en el motor v2. */
-  events?: EventOps;
+  loadSettings(): SettingsV2;
+  saveSettings(s: SettingsV2): void;
+  /** Gestión de eventos, categorías y metas. */
+  events: EventOps;
 }
 
 export type EventResult = { ok: true; id: string } | { ok: false; error: OpError };

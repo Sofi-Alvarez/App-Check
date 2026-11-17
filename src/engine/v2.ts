@@ -1,13 +1,12 @@
 // Motor de agenda sobre el modelo v2 (fase 2). Reproduce el comportamiento de las pantallas actuales usando series,
 // excepciones, categorías y metas guardadas por la capa de acceso.
 
-import { DayType, addDays, iso, mondayOf, parseISO, secondsOfDay } from '../agenda';
+import { addDays, iso, mondayOf, parseISO, secondsOfDay } from '../agenda';
 import type { Repository } from '../data/repository';
 import { KEYS } from '../data/repository';
 import {
   categoryById, categoryUsage, createCategory, deleteCategory, setCategoryArchived, updateCategory,
 } from '../domain/categories';
-import { addDaysISO } from '../domain/dates';
 import {
   allowedDeleteScopes, allowedScopes, createEvent, daysAffected, deleteEvent, editEvent, modifiedDays,
 } from '../domain/events';
@@ -20,15 +19,12 @@ import type { GoalOpResult } from '../domain/goals';
 import { describeRule } from '../domain/describe';
 import { buildSessions } from '../sessions';
 import type { AgendaState, Category } from '../domain/types';
+import { tuesdayOf } from '../domain/templates/apply';
 import { S } from '../i18n';
-import type { Settings } from '../storeShape';
-import {
-  DEFAULT_TUE_ANCHOR, applyDayList, clearAgenda, dayKindOf, flipTuesdays, legacyOf, listsFromSeries, newTaskId, rebuildRoot,
-  restoreDefaults, toEngineBlocks,
-} from './legacy-ops';
+import { applyDayList, clearAgenda, legacyOf, restoreTemplateState, toEngineBlocks } from './day-ops';
 import { applyMarginTo, planMarginFor } from './margin';
 import type { CategoryOpResult } from '../domain/categories';
-import type { AgendaEngine, CategoryInfo, CategoryResult, EngineBlock, EventResult, GoalCard, GoalResult, WeekRow } from './types';
+import type { AgendaEngine, CategoryInfo, CategoryResult, EventResult, GoalCard, GoalResult, WeekRow } from './types';
 
 /** Copia profunda del estado (sin depender de `structuredClone`, que no todas las versiones de Hermes tienen). */
 const structuredCloneState = (s: AgendaState): AgendaState => JSON.parse(JSON.stringify(s));
@@ -43,7 +39,8 @@ export function createV2Engine(repo: Repository, clock: () => Date = () => new D
     if (!s) throw new Error('No hay datos del formato nuevo.');
     return s;
   };
-  const anchor = () => repo.getValue(KEYS.legacyTueAnchor) ?? DEFAULT_TUE_ANCHOR;
+  // Martes de una semana "A" de la alternancia de la plantilla (para restaurarla con la misma alternancia).
+  const anchor = () => repo.getValue(KEYS.legacyTueAnchor) ?? tuesdayOf(today());
   const today = () => iso(clock());
   const save = (s: AgendaState) => repo.saveAgenda(s);
   const cat = (id: string) => info(categoryById(state().categories, id));
@@ -64,58 +61,12 @@ export function createV2Engine(repo: Repository, clock: () => Date = () => new D
   };
 
   const engine: AgendaEngine = {
-    kind: 'v2',
-
-    blocksFor(date) {
-      const blocks = toEngineBlocks(state(), date);
-      return blocks.length === 0 && dayKindOf(date, anchor()) === null ? null : blocks;
-    },
-    dayKind: (date) => dayKindOf(date, anchor()),
-    listFor: (kind) => listsFromSeries(state(), anchor()).lists[kind],
-
+    blocksFor: (date) => toEngineBlocks(state(), date),
     currentBlock(now) {
       const date = iso(now);
       const sec = secondsOfDay(now);
       const b = (engine.blocksFor(date) ?? []).find((x) => sec >= x.s * 60 && sec < x.e * 60);
       return b ? { bid: b.id, day: date, title: b.t, cat: b.c, planS: b.s, planE: b.e } : null;
-    },
-
-    saveTask(draft, scope, date) {
-      const st = state();
-      if (scope.kind === 'today') {
-        const id = draft.id ?? newTaskId();
-        const block: EngineBlock = { id, s: draft.s, e: draft.e, t: draft.t.trim(), c: draft.c, n: draft.n.trim() };
-        const list = toEngineBlocks(st, date);
-        const next = list.some((b) => b.id === id) ? list.map((b) => (b.id === id ? block : b)) : [...list, block];
-        save(applyDayList(st, date, next));
-        return id;
-      }
-      const root = draft.id ? legacyOf(st, draft.id) : newTaskId();
-      const { lists } = listsFromSeries(st, anchor());
-      for (const k of Object.keys(lists) as DayType[]) {
-        lists[k] = lists[k].filter((b) => b.id !== root);
-        if (scope.lists.includes(k)) {
-          lists[k].push({ id: root, s: draft.s, e: draft.e, t: draft.t.trim(), c: draft.c as never, n: draft.n.trim() });
-        }
-      }
-      save(rebuildRoot(st, root, lists, anchor(), today()));
-      return root;
-    },
-
-    deleteTask(id, scope, date) {
-      const st = state();
-      if (scope.kind === 'today') {
-        save(applyDayList(st, date, toEngineBlocks(st, date).filter((b) => b.id !== id)));
-        return;
-      }
-      const root = legacyOf(st, id);
-      const { lists } = listsFromSeries(st, anchor());
-      for (const k of scope.lists) lists[k] = lists[k].filter((b) => b.id !== root);
-      save(rebuildRoot(st, root, lists, anchor(), today()));
-    },
-
-    restore() {
-      save(restoreDefaults(state(), anchor(), today()));
     },
 
     planMargin: (day, aId, endMin) => planMarginFor(day, engine.blocksFor(day) ?? [], cat, aId, endMin),
@@ -202,25 +153,8 @@ export function createV2Engine(repo: Repository, clock: () => Date = () => new D
       return rows;
     },
 
-    upcomingTueAds(n, from) {
-      const out: string[] = [];
-      for (let d = from, i = 0; i < 26 * 7 && out.length < n; i++, d = addDaysISO(d, 1)) {
-        if (dayKindOf(d, anchor()) === 'tueAds') out.push(d);
-      }
-      return out;
-    },
-    shiftTuesdays(days) {
-      save(flipTuesdays(state()));
-      repo.writeAll([[KEYS.legacyTueAnchor, addDaysISO(anchor(), days)]]);
-    },
-
-    loadSettings(): Settings {
-      const s = repo.loadSettings();
-      return { notifStart: s.notifStart, endLead: s.endLead, wake: s.wake, muted: s.muted, anchor: anchor() };
-    },
-    saveSettings(s) {
-      repo.saveSettings({ notifStart: s.notifStart, endLead: s.endLead, wake: s.wake, muted: s.muted });
-    },
+    loadSettings: () => repo.loadSettings(),
+    saveSettings: (s) => repo.saveSettings(s),
 
     events: {
       series: (id) => state().series.find((x) => x.id === id) ?? null,
@@ -305,7 +239,7 @@ export function createV2Engine(repo: Repository, clock: () => Date = () => new D
         return out;
       },
       restoreTemplate() {
-        save(restoreDefaults(state(), anchor(), today()));
+        save(restoreTemplateState(state(), anchor(), today()));
         return { ok: true, id: '' };
       },
       clearAll() {

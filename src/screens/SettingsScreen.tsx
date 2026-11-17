@@ -1,19 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, AppState, Linking, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
-import { MESES, iso, parseISO } from '../agenda';
+import { Alert, AppState, Linking, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { shareBackup } from '../backupShare';
 import type { Ctx } from '../ctx';
-import { buildBackupParts, parseBackupParts, sizeLabel } from '../domain/backup';
-import { describeMigration, migrationReportText } from '../migration/startup';
 import {
   askExactAlarms, askNotifications, countScheduled, exactAlarmsGranted, getScheduleReport, notificationsGranted, scheduleTest,
 } from '../notifications';
-import { loadAllEntries } from '../store';
 import { S } from '../i18n';
 import { Btn, Card, Label, Pill } from '../ui';
 import { CategoriesScreen } from './CategoriesScreen';
 
 const T = S.settings;
-const fmtDate = (d: Date) => T.dayMonth(d.getDate(), MESES[d.getMonth()]);
 
 export function SettingsScreen({ c }: { c: Ctx }) {
   const { theme: t, settings } = c;
@@ -23,52 +19,8 @@ export function SettingsScreen({ c }: { c: Ctx }) {
   const [backupMsg, setBackupMsg] = useState('');
   const [catsOpen, setCatsOpen] = useState(false);
 
-  // Copia de seguridad completa (agenda editada, marcas de hecho, conteos, registro y ajustes).
-  // Se arma, se verifica contra sí misma y recién entonces se comparte; si algo no cuadra, no se comparte nada.
-  const exportBackup = async () => {
-    const entries = loadAllEntries();
-    if (!entries) {
-      setBackupMsg(T.backupReadError);
-      return;
-    }
-    if (entries.length === 0) {
-      setBackupMsg(T.backupEmpty);
-      return;
-    }
-    const parts = buildBackupParts(entries, new Date());
-    const check = parseBackupParts(parts);
-    if (!check.ok || check.entries.length !== entries.length) {
-      setBackupMsg(T.backupVerifyError);
-      return;
-    }
-    const label = T.backupLabel(entries.length, sizeLabel(parts));
-    let sent = 0;
-    try {
-      for (let i = 0; i < parts.length; i++) {
-        const r = await Share.share({
-          title: T.backupPartTitle(i + 1, parts.length),
-          message: parts[i],
-        });
-        if (r.action === Share.dismissedAction) break;
-        sent++;
-      }
-    } catch {
-      setBackupMsg(T.backupInterrupted(sent, parts.length));
-      return;
-    }
-    setBackupMsg(
-      sent === parts.length
-        ? T.backupDone(label, parts.length)
-        : T.backupPartial(sent, parts.length),
-    );
-  };
-
-  const mig = describeMigration(c.migration);
-  const shareMigration = async () => {
-    try {
-      await Share.share({ title: T.migrationShareTitle, message: migrationReportText(c.migration, iso(new Date())) });
-    } catch {}
-  };
+  // Copia de seguridad completa (agenda, marcas de hecho, conteos, registro y ajustes).
+  const exportBackup = async () => setBackupMsg(await shareBackup());
 
   const refresh = useCallback(async () => {
     setPerm({ notif: await notificationsGranted(), exact: await exactAlarmsGranted() });
@@ -82,10 +34,6 @@ export function SettingsScreen({ c }: { c: Ctx }) {
     });
     return () => sub.remove();
   }, [refresh]);
-
-  const shiftAnchor = (days: number) => c.shiftTuesdays(days);
-  // `settings.anchor` cambia al mover los martes y fuerza a recalcular.
-  const ads = settings.anchor ? c.engine.upcomingTueAds(3, iso(new Date())).map(parseISO) : [];
 
   return (
     <ScrollView
@@ -191,23 +139,6 @@ export function SettingsScreen({ c }: { c: Ctx }) {
         <Btn t={t} label={T.openSettings} onPress={() => Linking.openSettings()} />
       </Card>
 
-      {c.engine.events ? null : (
-      <Card t={t}>
-        <Label t={t}>{T.tuesdaysTitle}</Label>
-        <Text style={[s.note, { color: t.muted }]}>{T.tuesdaysIntro}</Text>
-        {ads.map((d) => (
-          <Text key={iso(d)} style={[s.date, { color: t.fg }]}>
-            {fmtDate(d)}
-          </Text>
-        ))}
-        <Text style={[s.note, { color: t.muted }]}>{T.tuesdaysNote}</Text>
-        <View style={s.pills}>
-          <Pill t={t} label={T.weekBack} onPress={() => shiftAnchor(-7)} />
-          <Pill t={t} label={T.weekForward} onPress={() => shiftAnchor(7)} />
-        </View>
-      </Card>
-      )}
-
       <Card t={t}>
         <Label t={t}>{T.backupTitle}</Label>
         <Text style={[s.note, { color: t.muted }]}>
@@ -221,86 +152,51 @@ export function SettingsScreen({ c }: { c: Ctx }) {
         ) : null}
       </Card>
 
-      {mig.ok !== null ? (
-        <Card t={t}>
-          <Label t={t}>{mig.title}</Label>
-          <Text style={[s.optText, { color: mig.ok ? t.ok : t.warn, fontWeight: '700' }]}>{mig.message}</Text>
-          {mig.details.map((line, i) => (
-            <Text key={i} style={[s.note, { color: t.muted }]}>
-              {line}
-            </Text>
-          ))}
-          <Btn t={t} kind="ghost" label={T.shareReport} onPress={shareMigration} />
-        </Card>
-      ) : null}
+      <Card t={t}>
+        <Label t={t}>{T.categoriesTitle}</Label>
+        <Text style={[s.note, { color: t.muted }]}>
+          {T.categoriesIntro}
+        </Text>
+        <Btn t={t} label={T.manageCategories} onPress={() => setCatsOpen(true)} />
+        <CategoriesScreen c={c} visible={catsOpen} onClose={() => setCatsOpen(false)} />
+      </Card>
 
-      {c.engine.events ? (
-        <Card t={t}>
-          <Label t={t}>{T.categoriesTitle}</Label>
-          <Text style={[s.note, { color: t.muted }]}>
-            {T.categoriesIntro}
-          </Text>
-          <Btn t={t} label={T.manageCategories} onPress={() => setCatsOpen(true)} />
-          <CategoriesScreen c={c} visible={catsOpen} onClose={() => setCatsOpen(false)} />
-        </Card>
-      ) : null}
-
-      {c.engine.events ? (
-        <Card t={t}>
-          <Label t={t}>{T.agendaTitle}</Label>
-          <Text style={[s.note, { color: t.muted }]}>
-            {T.agendaIntro}
-          </Text>
-          <Btn
-            t={t}
-            kind="ghost"
-            label={T.restoreTemplate}
-            onPress={() =>
-              Alert.alert(
-                T.restoreTemplate,
-                T.restoreTemplateBody,
-                [
-                  { text: S.common.cancel, style: 'cancel' },
-                  { text: T.restore, style: 'destructive', onPress: () => c.runEvent(() => c.engine.events!.restoreTemplate(), T.restoredTemplate) },
-                ],
-              )
-            }
-          />
-          <Btn
-            t={t}
-            kind="ghost"
-            label={T.clearAll}
-            onPress={() =>
-              Alert.alert(
-                T.clearAll,
-                T.clearAllBody,
-                [
-                  { text: S.common.cancel, style: 'cancel' },
-                  { text: T.clear, style: 'destructive', onPress: () => c.runEvent(() => c.engine.events!.clearAll(), T.cleared) },
-                ],
-              )
-            }
-          />
-        </Card>
-      ) : (
       <Card t={t}>
         <Label t={t}>{T.agendaTitle}</Label>
         <Text style={[s.note, { color: t.muted }]}>
-          {T.legacyIntro}
+          {T.agendaIntro}
         </Text>
         <Btn
           t={t}
           kind="ghost"
-          label={T.legacyRestore}
+          label={T.restoreTemplate}
           onPress={() =>
-            Alert.alert(T.legacyRestore, T.legacyRestoreBody, [
-              { text: S.common.cancel, style: 'cancel' },
-              { text: T.restore, style: 'destructive', onPress: c.restoreSchedule },
-            ])
+            Alert.alert(
+              T.restoreTemplate,
+              T.restoreTemplateBody,
+              [
+                { text: S.common.cancel, style: 'cancel' },
+                { text: T.restore, style: 'destructive', onPress: () => c.runEvent(() => c.engine.events.restoreTemplate(), T.restoredTemplate) },
+              ],
+            )
+          }
+        />
+        <Btn
+          t={t}
+          kind="ghost"
+          label={T.clearAll}
+          onPress={() =>
+            Alert.alert(
+              T.clearAll,
+              T.clearAllBody,
+              [
+                { text: S.common.cancel, style: 'cancel' },
+                { text: T.clear, style: 'destructive', onPress: () => c.runEvent(() => c.engine.events.clearAll(), T.cleared) },
+              ],
+            )
           }
         />
       </Card>
-      )}
     </ScrollView>
   );
 }
@@ -315,5 +211,4 @@ const s = StyleSheet.create({
   note: { fontSize: 14, lineHeight: 20 },
   step: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   stepNum: { fontSize: 16, fontWeight: '800', width: 18 },
-  date: { fontSize: 17, fontWeight: '600' },
 });

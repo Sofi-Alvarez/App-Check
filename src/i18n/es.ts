@@ -68,34 +68,14 @@ export const es = {
     renewBody: 'Ábrela para renovar los avisos de las próximas dos semanas.',
   },
 
-  /** Migración al formato nuevo (tarjeta de Ajustes e informe). */
-  migration: {
-    titleTest: 'Formato nuevo de la agenda (prueba)',
-    title: 'Formato nuevo de la agenda',
-    already: 'Tu agenda ya está en el formato nuevo.',
-    okTest: 'Prueba correcta: tu agenda se puede pasar al formato nuevo sin diferencias. Todavía no se cambió nada.',
-    migrated: 'Tu agenda se pasó al formato nuevo. Tus datos anteriores quedaron guardados en una copia dentro de la app.',
-    refused: (test: boolean, days: number) =>
-      `${test ? 'La prueba' : 'La migración'} encontró diferencias en ${plural(days, 'día', 'días')}. No se cambió nada: tu agenda sigue igual. Comparte el informe para revisarlo.`,
-    mismatchLine: (date: string, before: number, after: number) => `${date}: antes ${before}, después ${after} eventos.`,
-    crashed: (test: boolean) =>
-      `${test ? 'La prueba' : 'La migración'} no pudo completarse. No se cambió nada${test ? '' : ' y se vuelve a intentar la próxima vez que abras la app'}. Comparte el informe para revisarlo.`,
-    series: (n: number) => `${plural(n, 'evento', 'eventos')} en el formato nuevo.`,
-    verified: (n: number) => `${plural(n, 'día revisado', 'días revisados')}, sin diferencias.`,
-    dayChanges: (modified: number, cancelled: number, oneOff: number) =>
-      `Cambios de un solo día: ${modified} modificados, ${cancelled} quitados y ${plural(oneOff, 'tarea agregada', 'tareas agregadas')}.`,
-    split: (ids: string) => `Tareas con horarios distintos según el día, separadas en varios eventos: ${ids}.`,
-    renamedDone: (days: string) => `Días con marcas de hecho actualizadas: ${days}.`,
-    weekend: (days: string) => `Ediciones de fin de semana que nunca se mostraron (quedan en la copia): ${days}.`,
-    extraCategories: (ids: string) => `Categorías desconocidas conservadas como nuevas: ${ids}.`,
-    unknownKeys: (keys: string) => `Datos que la app no reconoce (no se tocan): ${keys}.`,
-    fromBackup: 'Se retomó desde la copia guardada en un intento anterior.',
-    reportTitle: (date: string) => `Informe de migración (${date})`,
-    reportMode: (mode: string) => `Modo: ${mode}`,
-    reportStatus: (status: string) => `Estado: ${status}`,
-    reportBefore: (list: string) => `  antes: ${list}`,
-    reportAfter: (list: string) => `  después: ${list}`,
-    alertSuffix: 'El detalle está en Ajustes.',
+  /** Pantalla que aparece si los datos guardados de la agenda no se pueden leer. */
+  dataError: {
+    title: 'No se pudo leer tu agenda',
+    body: 'Los datos guardados de la agenda están dañados. Antes de nada, exporta una copia de seguridad: guarda todo lo que hay, aunque esté dañado, para poder recuperarlo.',
+    detail: (key: string) => `Dato con problemas: ${key}`,
+    startOver: 'Empezar con la plantilla inicial',
+    startOverBody: 'Se reemplaza la agenda dañada por la rutina con la que empezó la app. El registro de uso (Datos y CSV) y los ajustes no se tocan. Exporta la copia antes si no lo hiciste.',
+    startOverConfirm: 'Empezar de nuevo',
   },
 
   /** Marco de la app: pestañas, sesión "otra cosa". */
@@ -365,7 +345,8 @@ export const es = {
     timerPill: (min: number) => `Timer ${min} min`,
     emptyDay: 'No hay eventos este día. Toca “+ Nuevo evento” para agregar uno.',
     newEvent: '+ Nuevo evento',
-    newTask: '+ Nueva tarea',
+    weekRange: (from: number, fromMonth: string, to: number, toMonth: string) =>
+      `Semana del ${from}${fromMonth ? ` de ${fromMonth}` : ''} al ${to} de ${toMonth}`,
   },
 
   /** Pestaña Datos. */
@@ -423,7 +404,6 @@ export const es = {
   /** Pestaña Ajustes. */
   settings: {
     title: 'Avisos y ajustes',
-    dayMonth: (day: number, month: string) => `${day} de ${month}`,
     reminders: 'Avisos',
     atStart: 'Avisar al empezar cada bloque',
     beforeEnd: 'Avisar antes de que termine un bloque',
@@ -454,11 +434,6 @@ export const es = {
     ],
     xiaomiNote: 'Los nombres de los menús pueden variar según tu versión.',
     openSettings: 'Abrir ajustes de la app',
-    tuesdaysTitle: 'Martes con adscripción',
-    tuesdaysIntro: 'Próximos martes con adscripción, cada 14 días:',
-    tuesdaysNote: 'Si alguna fecha no coincide con tu calendario, muévela una semana.',
-    weekBack: '− 1 semana',
-    weekForward: '+ 1 semana',
     backupTitle: 'Copia de seguridad',
     backupIntro: 'Guarda todo lo de la app: la agenda con tus ediciones, lo hecho, los conteos, el registro de sesiones y los ajustes. Compártela a tu correo o a Drive. Si desinstalas la app, sin esta copia se pierde todo.',
     backupButton: 'Exportar copia de seguridad',
@@ -470,8 +445,6 @@ export const es = {
     backupDone: (label: string, parts: number) => `Copia lista: ${label}, en ${plural(parts, 'parte', 'partes')}. Guárdala fuera del teléfono.`,
     backupPartial: (sent: number, total: number) => `Se compartieron ${sent} de ${total} partes. La copia está incompleta: vuelve a intentarlo y guarda todas.`,
     backupInterrupted: (sent: number, total: number) => `Se compartieron ${sent} de ${total} partes. Vuelve a intentarlo y guarda todas.`,
-    migrationShareTitle: 'Informe de migración',
-    shareReport: 'Compartir informe',
     categoriesTitle: 'Categorías',
     categoriesIntro: 'Crea, cambia de nombre o de color, archiva o elimina las categorías de tus eventos.',
     manageCategories: 'Administrar categorías',
@@ -485,9 +458,6 @@ export const es = {
     clearAllBody: 'Se quitan todos los eventos, las categorías y las metas. Queda una categoría "General" para empezar de cero. El registro de uso (Datos y CSV) no se borra.',
     clear: 'Borrar',
     cleared: 'Se borró toda la agenda',
-    legacyIntro: 'Si editaste tareas y quieres volver a la agenda original, restáurala. Tus datos de uso (sesiones, conteos, hechos) no se borran.',
-    legacyRestore: 'Restaurar agenda original',
-    legacyRestoreBody: 'Se descartan todas las tareas que editaste, creaste o eliminaste.',
   },
 };
 

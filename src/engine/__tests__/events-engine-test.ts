@@ -1,13 +1,11 @@
-import { buildV1Store } from '../../__fixtures__/v1-store';
+import { buildV2Store } from '../../__fixtures__/v2-store';
 import { memoryKV } from '../../data/kv';
 import { createRepository } from '../../data/repository';
 import type { EventPatch } from '../../domain/events';
-import { migrateRepository } from '../../migration/v1-to-v2';
 import { createV2Engine } from '../v2';
 
 function setup() {
-  const repo = createRepository(memoryKV(buildV1Store()));
-  expect(migrateRepository(repo, '2026-11-17').status).toBe('migrated');
+  const repo = createRepository(memoryKV(buildV2Store()));
   return { repo, engine: createV2Engine(repo, () => new Date(2026, 10, 17, 12, 0)) };
 }
 const p: EventPatch = { title: 'Correr', categoryId: 'health', startMin: 600, endMin: 660, note: '', rule: null, endDate: null };
@@ -15,11 +13,11 @@ const p: EventPatch = { title: 'Correr', categoryId: 'health', startMin: 600, en
 describe('motor v2: operaciones de eventos (fase 3)', () => {
   test('crear un evento de sábado: aparece ese día (antes el fin de semana no tenía agenda)', () => {
     const { engine } = setup();
-    expect(engine.blocksFor('2026-11-21')).toBeNull();
+    expect(engine.blocksFor('2026-11-21')).toEqual([]);
     const r = engine.events!.create('2026-11-21', p);
     expect(r.ok).toBe(true);
     expect(engine.blocksFor('2026-11-21')!.map((b) => b.t)).toEqual(['Correr']);
-    expect(engine.blocksFor('2026-11-28')).toBeNull();
+    expect(engine.blocksFor('2026-11-28')).toEqual([]);
   });
 
   test('deshacer: el estado guardado vuelve exactamente al anterior', () => {

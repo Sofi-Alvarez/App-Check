@@ -7,7 +7,7 @@ import type { AgendaState, Category, ColorToken } from './types';
 export const LEGACY_CATEGORY_IDS = ['work', 'content', 'project', 'health', 'english', 'fixed', 'rest', 'close'] as const;
 export type LegacyCategoryId = (typeof LEGACY_CATEGORY_IDS)[number];
 
-/** Nombres de la leyenda actual (`LEGEND` en `agenda.ts`). "Cierre" no estaba en la leyenda. */
+/** Nombres de las categorías de la rutina inicial. */
 const NAMES: Record<LegacyCategoryId, string> = {
   work: 'Búsqueda', content: 'Contenido', project: 'Proyecto', health: 'Ejercicio', english: 'Inglés',
   fixed: 'Fijo o viaje', rest: 'Pausa o comida', close: 'Cierre del día',

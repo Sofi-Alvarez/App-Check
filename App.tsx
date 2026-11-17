@@ -1,23 +1,22 @@
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlockInfo, addDays, iso, parseISO, startOfDayMs } from './src/agenda';
+import { BlockInfo, iso, parseISO, startOfDayMs } from './src/agenda';
+import { shareBackup } from './src/backupShare';
 import type { Ctx } from './src/ctx';
 import { S } from './src/i18n';
 import { expoKV } from './src/data/expoKV';
-import { createRepository } from './src/data/repository';
-import { StartupMigration, describeMigration, runStartupMigration } from './src/migration/startup';
+import { initializeIfEmpty, resetToTemplate } from './src/data/init';
+import { Repository, RepositoryError, createRepository } from './src/data/repository';
 import {
   StartTap, askNotifications, cancelTimerAlert, onStartTap, pendingStartTap, rescheduleAgenda, scheduleTimerAlert,
   setupChannels,
 } from './src/notifications';
-import type { AgendaState } from './src/domain/types';
-import type { AgendaEngine, BlockRef, EngineBlock, MarginPlan, Scope, TaskDraft } from './src/engine/types';
-import { createV1Engine } from './src/engine/v1';
+import type { AgendaState, SettingsV2 } from './src/domain/types';
+import type { AgendaEngine, BlockRef, EngineBlock, MarginPlan } from './src/engine/types';
 import { createV2Engine } from './src/engine/v2';
-import { migrateDoneToIds } from './src/schedule';
 import { AgendaScreen } from './src/screens/AgendaScreen';
 import { DataScreen } from './src/screens/DataScreen';
 import { MarginPrompt } from './src/screens/MarginPrompt';
@@ -25,10 +24,11 @@ import { GoalsScreen } from './src/screens/GoalsScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { TimerScreen } from './src/screens/TimerScreen';
 import {
-  ActiveSession, DayData, EventKind, EventSource, Settings, TimerState, loadActive, loadDay, loadSettings, loadTimer,
-  logEvent, saveActive, saveDay, saveTimer,
+  ActiveSession, DayData, EventKind, EventSource, TimerState, loadActive, loadDay, loadTimer, logEvent, saveActive, saveDay,
+  saveTimer,
 } from './src/store';
-import { useTheme } from './src/theme';
+import { Theme, useTheme } from './src/theme';
+import { Btn } from './src/ui';
 
 type Tab = 'agenda' | 'metas' | 'datos' | 'timer' | 'ajustes';
 const TABS: { key: Tab; label: string; glyph: string }[] = [
@@ -41,32 +41,62 @@ const TABS: { key: Tab; label: string; glyph: string }[] = [
 
 const toRef = (day: string, b: EngineBlock): BlockRef => ({ bid: b.id, day, title: b.t, cat: b.c, planS: b.s, planE: b.e });
 
+type Boot = { ok: true; engine: AgendaEngine } | { ok: false; repo: Repository; key: string };
+
 /**
- * Arranque: arregla las marcas de hecho antiguas (v1), corre la migración al formato nuevo y elige el motor. Si la
- * migración real ya corrió, la app usa el modelo nuevo (v2); si no (modo prueba, o se negó), sigue con el formato viejo.
+ * Arranque: si es una instalación nueva se arma la agenda con la plantilla inicial; si ya hay datos se usan tal cual.
+ * Si los datos guardados están dañados no se toca nada y se muestra la pantalla de datos dañados.
  */
-function boot(): { migration: StartupMigration; engine: AgendaEngine } {
-  migrateDoneToIds(loadSettings().anchor);
+function boot(): Boot {
   const repo = createRepository(expoKV);
-  const migration = runStartupMigration(repo, iso(new Date()));
-  let engine: AgendaEngine = createV1Engine();
   try {
-    if (repo.schemaVersion() >= 2 && repo.loadAgenda()) engine = createV2Engine(repo);
-  } catch {
-    // Datos del formato nuevo dañados: se sigue con el formato viejo, que no se borra nunca.
+    initializeIfEmpty(repo, iso(new Date()));
+    repo.loadAgenda();
+    return { ok: true, engine: createV2Engine(repo) };
+  } catch (e) {
+    if (e instanceof RepositoryError) return { ok: false, repo, key: e.key };
+    throw e;
   }
-  return { migration, engine };
 }
 
-/** Día que se ve al abrir. Con el formato viejo no había agenda el fin de semana y se saltaba al lunes; con el nuevo, hoy. */
-function defaultView(kind: AgendaEngine['kind']): string {
-  const n = new Date();
-  const dw = n.getDay();
-  if (kind === 'v2') return iso(n);
-  return iso(dw === 6 ? addDays(n, 2) : dw === 0 ? addDays(n, 1) : n);
+/** Datos dañados: primero exportar la copia (con las claves crudas), después, si se quiere, empezar de nuevo. */
+function DataError({ t, repo, errorKey, onReset }: { t: Theme; repo: Repository; errorKey: string; onReset: () => void }) {
+  const insets = useSafeAreaInsets();
+  const [msg, setMsg] = useState('');
+  const E = S.dataError;
+  const startOver = () =>
+    Alert.alert(E.startOver, E.startOverBody, [
+      { text: S.common.cancel, style: 'cancel' },
+      {
+        text: E.startOverConfirm,
+        style: 'destructive',
+        onPress: () => {
+          resetToTemplate(repo, iso(new Date()));
+          onReset();
+        },
+      },
+    ]);
+  return (
+    <ScrollView style={{ backgroundColor: t.bg }} contentContainerStyle={[s.error, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
+      <StatusBar style={t.dark ? 'light' : 'dark'} />
+      <Text accessibilityRole="header" style={[s.errorTitle, { color: t.fg }]}>{E.title}</Text>
+      <Text style={[s.errorBody, { color: t.fg }]}>{E.body}</Text>
+      <Text style={[s.errorBody, { color: t.muted }]}>{E.detail(errorKey)}</Text>
+      <Btn t={t} label={S.settings.backupButton} onPress={async () => setMsg(await shareBackup())} />
+      {msg ? <Text accessibilityLiveRegion="polite" style={[s.errorBody, { color: t.fg }]}>{msg}</Text> : null}
+      <Btn t={t} kind="ghost" label={E.startOver} onPress={startOver} />
+    </ScrollView>
+  );
 }
 
-function Root() {
+function Start() {
+  const t = useTheme();
+  const [state, setState] = useState<Boot>(boot);
+  if (!state.ok) return <DataError t={t} repo={state.repo} errorKey={state.key} onReset={() => setState(boot())} />;
+  return <Root engine={state.engine} />;
+}
+
+function Root({ engine }: { engine: AgendaEngine }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>('agenda');
@@ -74,10 +104,9 @@ function Root() {
   const [rev, setRev] = useState(0);
   const [schedRev, setSchedRev] = useState(0);
   const [margin, setMargin] = useState<MarginPlan | null>(null);
-  const [{ migration, engine }] = useState(boot);
-  const [settings, setSettings] = useState<Settings>(() => engine.loadSettings());
+  const [settings, setSettings] = useState<SettingsV2>(() => engine.loadSettings());
   const [timer, setTimer] = useState<TimerState>(() => loadTimer());
-  const [viewIso, setViewIso] = useState(() => defaultView(engine.kind));
+  const [viewIso, setViewIso] = useState(() => iso(new Date()));
   const [active, setActive] = useState<ActiveSession | null>(() => loadActive());
   const lastResched = useRef(0);
 
@@ -89,14 +118,6 @@ function Root() {
     const goalName = kind === 'count' && goal ? engine.goalName(goal) : '';
     logEvent(kind, info, ts, source, goal, delta, { catName, goalName });
   }, [engine]);
-
-  // Si la migración real (modo aplicar) no pudo hacerse, avisarlo una vez al abrir. En modo prueba solo se muestra en Ajustes.
-  useEffect(() => {
-    if (migration.mode === 'apply' && 'status' in migration && (migration.status === 'refused' || migration.status === 'crashed')) {
-      const v = describeMigration(migration);
-      Alert.alert(v.title, `${v.message}\n\n${S.migration.alertSuffix}`);
-    }
-  }, [migration]);
 
   // Reloj de la app
   useEffect(() => {
@@ -116,8 +137,8 @@ function Root() {
 
   // Reprogramar al cambiar ajustes que afectan los avisos
   const notifKey = useMemo(
-    () => JSON.stringify([settings.notifStart, settings.endLead, settings.anchor, settings.muted, schedRev]),
-    [settings.notifStart, settings.endLead, settings.anchor, settings.muted, schedRev],
+    () => JSON.stringify([settings.notifStart, settings.endLead, settings.muted, schedRev]),
+    [settings.notifStart, settings.endLead, settings.muted, schedRev],
   );
   const first = useRef(true);
   useEffect(() => {
@@ -169,9 +190,9 @@ function Root() {
 
   // Bloques del día que se está viendo (con las ediciones aplicadas).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const blocks = useMemo(() => engine.blocksFor(viewIso) ?? [], [engine, viewIso, settings.anchor, rev]);
+  const blocks = useMemo(() => engine.blocksFor(viewIso), [engine, viewIso, rev]);
 
-  const updateSettings = useCallback((patch: Partial<Settings>) => {
+  const updateSettings = useCallback((patch: Partial<SettingsV2>) => {
     setSettings((cur) => {
       const next = { ...cur, ...patch };
       engine.saveSettings(next);
@@ -223,27 +244,11 @@ function Root() {
     bump();
   }, [bump]);
 
-  const saveTask = useCallback((draft: TaskDraft, scope: Scope) => {
-    engine.saveTask(draft, scope, viewIso);
-    scheduleChanged();
-  }, [engine, viewIso, scheduleChanged]);
-
-  const deleteTask = useCallback((id: string, scope: Scope) => {
-    engine.deleteTask(id, scope, viewIso);
-    scheduleChanged();
-  }, [engine, viewIso, scheduleChanged]);
-
-  const restoreSchedule = useCallback(() => {
-    engine.restore();
-    scheduleChanged();
-  }, [engine, scheduleChanged]);
-
-  // Operaciones de la fase 3 con "Deshacer" durante 8 segundos (spec 009, 3.6).
+  // Operaciones de eventos con "Deshacer" durante 8 segundos (spec 009, 3.6).
   const [undo, setUndo] = useState<{ snap: AgendaState; label: string } | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const runEvent = useCallback(<T extends { ok: boolean }>(op: () => T, label: string): T => {
     const ev = engine.events;
-    if (!ev) return op(); // sin modelo nuevo no hay operaciones de eventos (no debería llamarse)
     const snap = ev.snapshot();
     const res = op();
     if (res.ok) {
@@ -255,19 +260,12 @@ function Root() {
     return res;
   }, [engine, scheduleChanged]);
   const doUndo = useCallback(() => {
-    if (!undo || !engine.events) return;
+    if (!undo) return;
     engine.events.restore(undo.snap);
     if (undoTimer.current) clearTimeout(undoTimer.current);
     setUndo(null);
     scheduleChanged();
   }, [undo, engine, scheduleChanged]);
-
-  // Mover la alternancia de los martes (tarjeta de Ajustes).
-  const shiftTuesdays = useCallback((days: number) => {
-    engine.shiftTuesdays(days);
-    setSettings(engine.loadSettings());
-    scheduleChanged();
-  }, [engine, scheduleChanged]);
 
   const commitTimer = useCallback((next: TimerState) => {
     setTimer(next);
@@ -406,7 +404,7 @@ function Root() {
     viewIso, setViewIso, day, toggleDone, changeCount, toggleMute,
     timer, timerLeft, startTimer, toggleTimer, resetTimer,
     active, startSession, pauseResume, finishSession,
-    blocks, saveTask, deleteTask, restoreSchedule, migration, engine, shiftTuesdays, runEvent,
+    blocks, engine, runEvent,
   };
 
   return (
@@ -454,12 +452,15 @@ function Root() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <Root />
+      <Start />
     </SafeAreaProvider>
   );
 }
 
 const s = StyleSheet.create({
+  error: { paddingHorizontal: 16, gap: 16 },
+  errorTitle: { fontSize: 26, fontWeight: '800' },
+  errorBody: { fontSize: 16, lineHeight: 23 },
   undo: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 12, marginBottom: 8, paddingLeft: 16, paddingRight: 8, minHeight: 52, borderRadius: 12 },
   undoText: { flex: 1, fontSize: 15, fontWeight: '600' },
   undoBtn: { minHeight: 48, minWidth: 48, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },

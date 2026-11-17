@@ -1,23 +1,22 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
-  DIAS, INIT, MESES, TYPE_LABEL, addDays, fmtClock, hm, iso, mondayOf,
+  DIAS, INIT, MESES, addDays, fmtClock, hm, iso, mondayOf,
   parseISO, secondsOfDay, weekRangeLabel,
 } from '../agenda';
 import type { Ctx } from '../ctx';
-import type { EngineBlock, TaskDraft } from '../engine/types';
+import type { EngineBlock } from '../engine/types';
 import { colorFor } from '../theme';
 import { S } from '../i18n';
 import { Bar, Btn, Card, Label, MONO, Pill } from '../ui';
 import { EditTarget, EventEditor } from './EventEditor';
-import { TaskEditor } from './TaskEditor';
 
 const A = S.agenda;
 
 /** Contadores de las metas asociadas a un evento, para sumar sin ir a la pestaña Metas (spec 009, 5.4; T5.3). */
 function LinkedCounters({ c, bid }: { c: Ctx; bid: string }) {
   const t = c.theme;
-  const goals = c.engine.events?.goalsForSeries(bid, c.viewIso) ?? [];
+  const goals = c.engine.events.goalsForSeries(bid, c.viewIso);
   if (goals.length === 0) return null;
   return (
     <View style={{ gap: 8 }}>
@@ -43,13 +42,8 @@ export function AgendaScreen({ c }: { c: Ctx }) {
   const { theme: t, now, settings, viewIso, day } = c;
   const d = parseISO(viewIso);
   const mon = mondayOf(d);
-  const type = c.engine.dayKind(viewIso);
   const blocks = c.blocks;
-  const [draft, setDraft] = useState<TaskDraft | null>(null);
   const [editing, setEditing] = useState<EditTarget | null>(null);
-  // Con el modelo nuevo (fase 3) se puede planificar cualquier día; con el formato viejo, solo los días con tipo.
-  const v2 = !!c.engine.events;
-  const canPlan = v2 || !!type;
   const todayIso = iso(now);
   const isToday = viewIso === todayIso;
   const sec = secondsOfDay(now);
@@ -57,7 +51,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
   const nextBlock = isToday && curIdx < 0 ? blocks.find((b) => b.s * 60 > sec) : undefined;
   const cur = curIdx >= 0 ? blocks[curIdx] : undefined;
   const { active } = c;
-  const curInfo = cur && canPlan ? toRef(viewIso, cur) : null;
+  const curInfo = cur ? toRef(viewIso, cur) : null;
   const activeMs = active ? (active.pausedAt || now.getTime()) - active.startedAt - active.pausedMs : 0;
   const activeOther = !!active && !!curInfo && active.bid !== curInfo.bid;
 
@@ -67,20 +61,16 @@ export function AgendaScreen({ c }: { c: Ctx }) {
       showsVerticalScrollIndicator={false}
     >
       <View style={{ gap: 4 }}>
-        {v2 ? (
-          // Con 7 días, las flechas de semana van en esta línea para que los días ocupen todo el ancho.
-          <View style={s.kickerRow}>
-            <Text style={[s.kicker, s.flex, { color: t.muted }]}>{weekRangeLabel(mon)}</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel={A.prevWeek} onPress={() => c.setViewIso(iso(addDays(d, -7)))} style={[s.navSq, { backgroundColor: t.surface, borderColor: t.line }]}>
-              <Text style={[s.navText, { color: t.fg }]}>‹</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel={A.nextWeek} onPress={() => c.setViewIso(iso(addDays(d, 7)))} style={[s.navSq, { backgroundColor: t.surface, borderColor: t.line }]}>
-              <Text style={[s.navText, { color: t.fg }]}>›</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <Text style={[s.kicker, { color: t.muted }]}>{weekRangeLabel(mon)}</Text>
-        )}
+        {/* Con 7 días, las flechas de semana van en esta línea para que los días ocupen todo el ancho. */}
+        <View style={s.kickerRow}>
+          <Text style={[s.kicker, s.flex, { color: t.muted }]}>{weekRangeLabel(mon)}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={A.prevWeek} onPress={() => c.setViewIso(iso(addDays(d, -7)))} style={[s.navSq, { backgroundColor: t.surface, borderColor: t.line }]}>
+            <Text style={[s.navText, { color: t.fg }]}>‹</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={A.nextWeek} onPress={() => c.setViewIso(iso(addDays(d, 7)))} style={[s.navSq, { backgroundColor: t.surface, borderColor: t.line }]}>
+            <Text style={[s.navText, { color: t.fg }]}>›</Text>
+          </Pressable>
+        </View>
         <Text style={[s.h1, { color: t.fg }]}>
           {DIAS[d.getDay()]} {d.getDate()} de {MESES[d.getMonth()]}
         </Text>
@@ -90,26 +80,12 @@ export function AgendaScreen({ c }: { c: Ctx }) {
               <Text style={[s.chipText, { color: t.onAccent }]}>{A.today}</Text>
             </View>
           )}
-          {type && !v2 && (
-            <View style={[s.chip, { backgroundColor: t.surface2 }]}>
-              <Text style={[s.chipText, { color: t.fg }]}>{TYPE_LABEL[type]}</Text>
-            </View>
-          )}
         </View>
       </View>
 
-      <View style={[s.weekNav, v2 && s.weekNav7]}>
-        {v2 ? null : (
-        <Pressable
-          accessibilityLabel={A.prevWeek}
-          onPress={() => c.setViewIso(iso(addDays(d, -7)))}
-          style={[s.navBtn, { backgroundColor: t.surface, borderColor: t.line }]}
-        >
-          <Text style={[s.navText, { color: t.fg }]}>‹</Text>
-        </Pressable>
-        )}
-        <View style={[s.days, v2 && s.days7]}>
-          {(v2 ? [0, 1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4]).map((i) => {
+      <View style={[s.weekNav, s.weekNav7]}>
+        <View style={[s.days, s.days7]}>
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => {
             const x = addDays(mon, i);
             const id = iso(x);
             const sel = id === viewIso;
@@ -130,15 +106,6 @@ export function AgendaScreen({ c }: { c: Ctx }) {
             );
           })}
         </View>
-        {v2 ? null : (
-        <Pressable
-          accessibilityLabel={A.nextWeek}
-          onPress={() => c.setViewIso(iso(addDays(d, 7)))}
-          style={[s.navBtn, { backgroundColor: t.surface, borderColor: t.line }]}
-        >
-          <Text style={[s.navText, { color: t.fg }]}>›</Text>
-        </Pressable>
-        )}
       </View>
 
       <Card t={t}>
@@ -258,7 +225,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
                       a11y={A.reminderA11y(b.t, !muted)}
                       onPress={() => c.toggleMute(key)}
                     />
-                    {isToday && canPlan ? (
+                    {isToday ? (
                       <Pill
                         t={t}
                         label={active?.bid === b.id ? A.running : A.start}
@@ -273,7 +240,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
                       t={t}
                       label={A.edit}
                       a11y={A.editA11y(b.t)}
-                      onPress={() => (v2 ? setEditing({ id: b.id, refDate: viewIso }) : setDraft({ id: b.id, t: b.t, c: b.c, s: b.s, e: b.e, n: b.n }))}
+                      onPress={() => setEditing({ id: b.id, refDate: viewIso })}
                     />
                     {noTimer ? null : (
                       <Pill t={t} label={A.timerPill(b.e - b.s)} onPress={() => c.startTimer(b.e - b.s, b.t)} />
@@ -284,24 +251,20 @@ export function AgendaScreen({ c }: { c: Ctx }) {
             );
           })}
         </View>
-        {v2 && blocks.length === 0 ? (
+        {blocks.length === 0 ? (
           <Text style={[s.note, { color: t.muted }]}>{A.emptyDay}</Text>
         ) : null}
-        {canPlan ? (
-          <Btn
-            t={t}
-            kind="ghost"
-            label={v2 ? A.newEvent : A.newTask}
-            onPress={() => {
-              const start = isToday ? Math.min(23 * 60, Math.ceil(sec / 900) * 15) : 9 * 60;
-              if (v2) setEditing({ id: null, refDate: viewIso, start });
-              else setDraft({ id: null, t: '', c: 'work', s: start, e: Math.min(24 * 60, start + 30), n: '' });
-            }}
-          />
-        ) : null}
+        <Btn
+          t={t}
+          kind="ghost"
+          label={A.newEvent}
+          onPress={() => {
+            const start = isToday ? Math.min(23 * 60, Math.ceil(sec / 900) * 15) : 9 * 60;
+            setEditing({ id: null, refDate: viewIso, start });
+          }}
+        />
       </View>
-      <TaskEditor c={c} draft={draft} type={type} onClose={() => setDraft(null)} />
-      {v2 ? <EventEditor c={c} target={editing} onClose={() => setEditing(null)} /> : null}
+      <EventEditor c={c} target={editing} onClose={() => setEditing(null)} />
     </ScrollView>
   );
 }
@@ -319,7 +282,6 @@ const s = StyleSheet.create({
   kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   counterRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   navSq: { width: 48, height: 48, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  navBtn: { width: 40, height: 56, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   navText: { fontSize: 26, lineHeight: 30 },
   days: { flex: 1, flexDirection: 'row', gap: 6 },
   dayBtn: { flex: 1, height: 56, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },

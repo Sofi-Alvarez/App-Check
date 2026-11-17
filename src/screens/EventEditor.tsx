@@ -1,5 +1,4 @@
-// Editor de eventos de la fase 3 (spec 009, secciones 3.2 a 3.6). Solo se usa con el motor v2; con el formato viejo
-// sigue el editor anterior (`TaskEditor`).
+// Editor de eventos (spec 009, secciones 3.2 a 3.6).
 
 import React, { useMemo, useState } from 'react';
 import {
@@ -14,7 +13,7 @@ import type { EditScope, EventPatch, OpError } from '../domain/events';
 import type { SeriesError } from '../domain/recurrence';
 import { COLOR_TOKENS } from '../domain/categories';
 import type { ColorToken, Rule, SeriesReminder } from '../domain/types';
-import { overlaps } from '../engine/legacy-ops';
+import { overlaps } from '../engine/day-ops';
 import { colorFor } from '../theme';
 import { Btn, Label, MONO, Pill } from '../ui';
 
@@ -63,7 +62,7 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
   const ev = c.engine.events!;
   const series = target.id ? ev.series(target.id) : null;
   // Lo que se ve ese día (con los cambios propios de ese día, si los hay).
-  const occ = target.id ? (c.engine.blocksFor(target.refDate) ?? []).find((b) => b.id === target.id) : undefined;
+  const occ = target.id ? c.engine.blocksFor(target.refDate).find((b) => b.id === target.id) : undefined;
   const isNew = !series;
   const [catRev, setCatRev] = useState(0);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `catRev` relee las categorías después de crear una
@@ -112,7 +111,7 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
     formError = E.moveNeedsSameRule;
   }
 
-  const dayBlocks = c.engine.blocksFor(series?.rule ? moveDate : date) ?? [];
+  const dayBlocks = c.engine.blocksFor(series?.rule ? moveDate : date);
   const clash = !formError && s != null && e != null ? overlaps(dayBlocks, s, e, target.id) : [];
 
   const run = (op: () => ReturnType<typeof ev.create>, label: string) => {

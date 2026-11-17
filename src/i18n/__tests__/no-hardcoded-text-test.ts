@@ -1,9 +1,6 @@
 /// <reference types="node" />
 // T6.4: los textos de la interfaz viven en `src/i18n/es.ts`. Esta prueba recorre las pantallas y la lógica que arma
 // textos para la persona, y falla si encuentra texto en español escrito directo en el código.
-//
-// Excepciones: el editor de la versión vieja (`TaskEditor.tsx`, se borra con el código v1) y el contenido de la rutina
-// en `agenda.ts` (datos de la plantilla, no textos de la interfaz).
 
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
@@ -15,9 +12,10 @@ const FILES = [
   join(ROOT, 'notifications.ts'),
   join(ROOT, 'reminders.ts'),
   join(ROOT, 'domain', 'describe.ts'),
-  join(ROOT, 'migration', 'startup.ts'),
+  join(ROOT, 'agenda.ts'),
+  join(ROOT, 'backupShare.ts'),
   join(ROOT, 'engine', 'v2.ts'),
-].filter((f) => statSync(f).isFile() && !f.endsWith('TaskEditor.tsx'));
+].filter((f) => statSync(f).isFile());
 
 /** Palabras en español de al menos 3 letras, con alguna minúscula: lo que suele ser un texto para la persona. */
 const WORDS = /[A-Za-zÁÉÍÓÚáéíóúñÑ¿¡]{3,}(\s+[A-Za-zÁÉÍÓÚáéíóúñÑ]{2,})+/;

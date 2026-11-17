@@ -1,6 +1,8 @@
 import { useColorScheme } from 'react-native';
-import type { Cat } from './agenda';
 import type { ColorToken } from './domain/types';
+
+/** Claves de la paleta de colores de categorías. */
+type Cat = 'rest' | 'health' | 'work' | 'content' | 'project' | 'english' | 'fixed' | 'close';
 
 export interface Theme {
   dark: boolean;

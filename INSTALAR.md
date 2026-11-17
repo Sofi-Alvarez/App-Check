@@ -68,6 +68,8 @@ No necesita APK nuevo: solo cambia código JavaScript. Cierra y abre la app dos 
 4. Abre el archivo recibido: es texto JSON con `"format":"agenda-backup"` al comienzo.
 5. Comprueba que la cantidad de claves se parece a lo esperado (un día con registro suma un par de claves: `agenda:day:…` y `agenda:log:…`).
 
+> **Nota (fase 6, T6.2):** desde que se borró el código de la versión vieja, las secciones de migración (T1.7, E2a y E2b) quedan solo como historia: la app ya no lee el formato viejo. Una instalación nueva empieza con la plantilla inicial. Si algún día los datos guardados se dañaran, la app muestra una pantalla para exportar la copia de seguridad y, si quieres, empezar de nuevo con la plantilla.
+
 ## Prueba de la migración al formato nuevo (T1.7)
 
 Esta actualización **no cambia tus datos**. Al abrir la app, prueba en memoria si tu agenda se puede pasar al formato nuevo y muestra el resultado en Ajustes.

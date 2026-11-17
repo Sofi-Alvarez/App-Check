@@ -1,4 +1,3 @@
-import { LEGEND } from '../../agenda';
 import type { AgendaState } from '../types';
 import {
   COLOR_TOKENS, LEGACY_CATEGORY_IDS, SEED_CATEGORIES, categoryById, categoryUsage, createCategory, deleteCategory, isLegacyCategoryId,
@@ -32,8 +31,10 @@ describe('categorías iniciales (CA-01)', () => {
     }
   });
 
-  test('los nombres coinciden con la leyenda actual', () => {
-    for (const [id, label] of LEGEND) expect(legacyCategory(id).name).toBe(label);
+  test('los nombres son los de la leyenda de la rutina', () => {
+    expect(SEED_CATEGORIES.map((c) => c.name)).toEqual(LEGACY_CATEGORY_IDS.map((id) => legacyCategory(id).name));
+    expect(legacyCategory('work').name).toBe('Búsqueda');
+    expect(legacyCategory('close').name).toBe('Cierre del día');
   });
 
   test('ninguna empieza archivada', () => {

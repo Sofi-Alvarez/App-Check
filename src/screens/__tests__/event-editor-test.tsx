@@ -4,19 +4,17 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { Alert } from 'react-native';
-import { buildV1Store } from '../../__fixtures__/v1-store';
+import { buildV2Store } from '../../__fixtures__/v2-store';
 import type { Ctx } from '../../ctx';
 import { memoryKV } from '../../data/kv';
 import { createRepository } from '../../data/repository';
 import type { EventResult } from '../../engine/types';
 import { createV2Engine } from '../../engine/v2';
-import { migrateRepository } from '../../migration/v1-to-v2';
 import { THEMES } from '../../theme';
 import { EventEditor } from '../EventEditor';
 
 function setup(active: Ctx['active'] = null) {
-  const repo = createRepository(memoryKV(buildV1Store()));
-  migrateRepository(repo, '2026-11-17');
+  const repo = createRepository(memoryKV(buildV2Store()));
   const engine = createV2Engine(repo, () => new Date(2026, 10, 17, 12, 0));
   const runs: string[] = [];
   const c = {

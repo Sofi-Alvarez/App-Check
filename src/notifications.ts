@@ -6,7 +6,8 @@ import { addDays, iso, startOfDayMs } from './agenda';
 import type { AgendaEngine } from './engine/types';
 import { S } from './i18n';
 import { ReminderDay, planGoalReminders, planReminders } from './reminders';
-import type { Settings, TimerState } from './store';
+import type { SettingsV2 } from './domain/types';
+import type { TimerState } from './store';
 
 export const CH_AGENDA = 'agenda';
 export const CH_TIMER = 'timer';
@@ -175,7 +176,7 @@ let lastReport: ScheduleReport | null = null;
 export const getScheduleReport = () => lastReport;
 
 /** Reprograma los avisos de los próximos 14 días. Se llama al abrir la app y al cambiar ajustes. */
-export function rescheduleAgenda(engine: AgendaEngine, s: Settings, timer: TimerState): Promise<void> {
+export function rescheduleAgenda(engine: AgendaEngine, s: SettingsV2, timer: TimerState): Promise<void> {
   const run = async () => {
     lastReport = { at: Date.now(), planned: 0, ok: 0, error: null, running: true };
     try {

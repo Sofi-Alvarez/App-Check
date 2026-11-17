@@ -5,12 +5,11 @@
 import { render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { buildV1Store } from '../../__fixtures__/v1-store';
+import { buildV2Store } from '../../__fixtures__/v2-store';
 import type { Ctx } from '../../ctx';
 import { memoryKV } from '../../data/kv';
 import { createRepository } from '../../data/repository';
 import { createV2Engine } from '../../engine/v2';
-import { migrateRepository } from '../../migration/v1-to-v2';
 import { THEMES } from '../../theme';
 import { Btn, Pill } from '../../ui';
 import { AgendaScreen } from '../AgendaScreen';
@@ -22,8 +21,7 @@ import { GoalsScreen } from '../GoalsScreen';
 jest.setTimeout(30000);
 
 function ctx(): Ctx {
-  const repo = createRepository(memoryKV(buildV1Store()));
-  migrateRepository(repo, '2026-11-17');
+  const repo = createRepository(memoryKV(buildV2Store()));
   const now = new Date(2026, 10, 16, 9, 30);
   const engine = createV2Engine(repo, () => now);
   return {

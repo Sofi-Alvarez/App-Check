@@ -20,8 +20,7 @@ export function DataScreen({ c }: { c: Ctx }) {
   const { sessions, loose } = useMemo(() => buildSessions(events, nowMs), [events, nowMs]);
 
   const mon = mondayOf(parseISO(viewIso));
-  // Con el modelo nuevo puede haber sesiones el fin de semana: la semana tiene 7 días.
-  const days = (c.engine.events ? [0, 1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4]).map((i) => iso(addDays(mon, i)));
+  const days = [0, 1, 2, 3, 4, 5, 6].map((i) => iso(addDays(mon, i)));
 
   // Nombre de cada meta en los conteos (T5.4): el actual si la meta existe; si no (eliminada), el último nombre que
   // quedó guardado en el registro; si tampoco, el id.
@@ -31,7 +30,7 @@ export function DataScreen({ c }: { c: Ctx }) {
     return m;
   }, [events]);
   const kinds = useMemo(
-    () => Object.fromEntries((c.engine.events?.goalsAll() ?? []).map((g) => [g.id, g.kind])),
+    () => Object.fromEntries(c.engine.events.goalsAll().map((g) => [g.id, g.kind])),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `c.rev` relee las metas después de un cambio
     [c.engine, c.rev],
   );

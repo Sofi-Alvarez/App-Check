@@ -1,21 +1,18 @@
-import { dayType, defaultBlocks, parseISO } from '../../../agenda';
 import { SEED_CATEGORIES } from '../../categories';
-import { addDaysISO } from '../../dates';
 import { buildDay, validateSeries } from '../../recurrence';
 import type { Category } from '../../types';
-import { buildLegacyTemplate } from '../build-legacy';
+import { instantiateTemplate, tuesdayOf, weekStarts } from '../apply';
 import { EMPTY_TEMPLATE, JOB_SEARCH_TEMPLATE, TEMPLATES, applyTemplate } from '../index';
 
 const counter = () => {
   let n = 0;
   return (kind: string) => `${kind}-${++n}`;
 };
-const fields = (b: { s: number; e: number; t: string; c: string; n: string }) => [b.s, b.e, b.t, b.c, b.n].join('|');
 
 describe('plantilla "Búsqueda de empleo" (JSON)', () => {
-  // Mientras `agenda.ts` siga teniendo la rutina escrita, el JSON tiene que coincidir con ella. Se borra en T6.2.
-  test('coincide con la agenda escrita en agenda.ts', () => {
-    expect(JOB_SEARCH_TEMPLATE).toEqual(buildLegacyTemplate());
+  test('tiene la rutina completa: 66 eventos, 8 categorías y 8 metas', () => {
+    expect([JOB_SEARCH_TEMPLATE.series.length, JOB_SEARCH_TEMPLATE.categories.length, JOB_SEARCH_TEMPLATE.goals.length]).toEqual([66, 8, 8]);
+    expect(new Set(JOB_SEARCH_TEMPLATE.series.map((x) => x.id)).size).toBe(66);
   });
 
   test('todas sus series son válidas y sus categorías existen', () => {
@@ -37,22 +34,17 @@ describe('plantilla "Búsqueda de empleo" (JSON)', () => {
 });
 
 describe('applyTemplate', () => {
-  test('aplicada desde una semana con adscripción reproduce la agenda original durante 8 semanas', () => {
-    const start = '2026-11-03'; // martes con adscripción (ancla actual)
-    const applied = applyTemplate(JOB_SEARCH_TEMPLATE, { startDate: start, newId: counter() });
-    const state = { series: applied.series, exceptions: [] };
-    const catOf = new Map(applied.categories.map((c) => [c.id, c]));
-    for (let d = start; d < addDaysISO(start, 56); d = addDaysISO(d, 1)) {
-      const type = dayType(parseISO(d), start);
-      const expected = (type ? defaultBlocks(type) : []).map(fields).sort();
-      // Las categorías tienen ids nuevos: se comparan por el id original guardado en el nombre de la semilla.
-      const got = buildDay(state, d).map((b) => {
-        const name = catOf.get(b.c)!.name;
-        const orig = SEED_CATEGORIES.find((c) => c.name === name)!.id;
-        return fields({ ...b, c: orig });
-      }).sort();
-      expect([d, ...got]).toEqual([d, ...expected]);
-    }
+  test('aplicada desde una semana con adscripción: lunes a viernes con su rutina, martes alternos y fin de semana libre', () => {
+    const applied = applyTemplate(JOB_SEARCH_TEMPLATE, { startDate: '2026-11-03', newId: counter() });
+    const titles = (d: string) => buildDay({ series: applied.series, exceptions: [] }, d).map((b) => b.t);
+    expect(titles('2026-11-03')).toContain('Adscripción de políticas educativas');
+    expect(titles('2026-11-10')).not.toContain('Adscripción de políticas educativas');
+    expect(titles('2026-11-10')).toContain('/jobs y postular');
+    expect(titles('2026-11-17')).toContain('Adscripción de políticas educativas');
+    expect(titles('2026-11-04')).toContain('/jobs y postular');
+    expect(titles('2026-11-05')).toContain('Proyectual');
+    expect(titles('2026-11-07')).toEqual([]);
+    expect(titles('2026-11-08')).toEqual([]);
   });
 
   test('aplicada desde una semana sin adscripción, los martes alternan al revés', () => {
@@ -95,5 +87,23 @@ describe('applyTemplate', () => {
 
   test('la plantilla vacía no agrega nada', () => {
     expect(applyTemplate(EMPTY_TEMPLATE, { startDate: '2026-11-03', newId: counter() })).toEqual({ categories: [], series: [], goals: [] });
+  });
+});
+
+describe('instantiateTemplate (instalación nueva y "Restaurar la plantilla inicial")', () => {
+  test('conserva los ids de la plantilla y respeta la alternancia de la semana de referencia', () => {
+    const st = instantiateTemplate(JOB_SEARCH_TEMPLATE, weekStarts('2026-11-03', '2026-11-03'), '2026-11-03');
+    expect(st.series.map((x) => x.id).sort()).toEqual(JOB_SEARCH_TEMPLATE.series.map((x) => x.id).sort());
+    const titles = (d: string) => buildDay(st, d).map((b) => b.t);
+    expect(titles('2026-11-03')).toContain('Adscripción de políticas educativas');
+    expect(titles('2026-11-10')).not.toContain('Adscripción de políticas educativas');
+    expect(st.goals.every((g) => g.versions[0].effectiveFrom === '2026-11-03')).toBe(true);
+  });
+
+  test('weekStarts y tuesdayOf', () => {
+    expect(weekStarts('2026-11-09', '2026-11-03')).toEqual({ weekly: '2026-11-09', a: '2026-11-02', b: '2026-11-09' });
+    expect(weekStarts('2026-11-03', '2026-11-03')).toEqual({ weekly: '2026-11-02', a: '2026-11-02', b: '2026-11-09' });
+    expect(tuesdayOf('2026-11-21')).toBe('2026-11-17');
+    expect(tuesdayOf('2026-11-16')).toBe('2026-11-17');
   });
 });

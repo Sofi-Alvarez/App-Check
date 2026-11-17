@@ -20,14 +20,14 @@ function goalSummary(g: GoalView): string {
 }
 
 export function GoalsScreen({ c }: { c: Ctx }) {
-  const { theme: t, settings, viewIso, day } = c;
+  const { theme: t, viewIso, day } = c;
   const [editing, setEditing] = useState<{ id: string | null } | null>(null);
-  const all = c.engine.events ? c.engine.events.goalsAll() : [];
+  const all = c.engine.events.goalsAll();
   const d = parseISO(viewIso);
   const goals = c.engine.goalsFor(viewIso);
   // `c.rev` fuerza a releer el almacenamiento tras cada cambio.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const rows = useMemo(() => c.engine.weekSummary(viewIso), [c.engine, viewIso, settings.anchor, c.rev]);
+  const rows = useMemo(() => c.engine.weekSummary(viewIso), [c.engine, viewIso, c.rev]);
 
   return (
     <ScrollView contentContainerStyle={[s.content, { paddingTop: c.insets.top + 12 }]} showsVerticalScrollIndicator={false}>
@@ -88,23 +88,21 @@ export function GoalsScreen({ c }: { c: Ctx }) {
         })}
       </Card>
 
-      {c.engine.events ? (
-        <Card t={t} style={{ gap: 10 }}>
-          <Label t={t}>{G.yours}</Label>
-          {all.length === 0 ? <Text style={[s.sub, { color: t.muted }]}>{G.none}</Text> : null}
-          {[...all.filter((g) => !g.archived), ...all.filter((g) => g.archived)].map((g) => (
-            <Pressable
-              key={g.id} accessibilityRole="button" accessibilityLabel={G.editA11y(g.name)} onPress={() => setEditing({ id: g.id })}
-              style={[s.item, { borderColor: t.line, opacity: g.archived ? 0.6 : 1 }]}
-            >
-              <Text style={[s.wLabel, { color: t.fg, fontWeight: '700' }]}>{g.name}{g.archived ? G.archivedTag : ''}</Text>
-              <Text style={[s.sub, { color: t.muted }]}>{goalSummary(g)}</Text>
-            </Pressable>
-          ))}
-          <Btn t={t} label={G.newButton} onPress={() => setEditing({ id: null })} />
-        </Card>
-      ) : null}
-      {c.engine.events ? <GoalEditor c={c} target={editing} onClose={() => setEditing(null)} /> : null}
+      <Card t={t} style={{ gap: 10 }}>
+        <Label t={t}>{G.yours}</Label>
+        {all.length === 0 ? <Text style={[s.sub, { color: t.muted }]}>{G.none}</Text> : null}
+        {[...all.filter((g) => !g.archived), ...all.filter((g) => g.archived)].map((g) => (
+          <Pressable
+            key={g.id} accessibilityRole="button" accessibilityLabel={G.editA11y(g.name)} onPress={() => setEditing({ id: g.id })}
+            style={[s.item, { borderColor: t.line, opacity: g.archived ? 0.6 : 1 }]}
+          >
+            <Text style={[s.wLabel, { color: t.fg, fontWeight: '700' }]}>{g.name}{g.archived ? G.archivedTag : ''}</Text>
+            <Text style={[s.sub, { color: t.muted }]}>{goalSummary(g)}</Text>
+          </Pressable>
+        ))}
+        <Btn t={t} label={G.newButton} onPress={() => setEditing({ id: null })} />
+      </Card>
+      <GoalEditor c={c} target={editing} onClose={() => setEditing(null)} />
     </ScrollView>
   );
 }

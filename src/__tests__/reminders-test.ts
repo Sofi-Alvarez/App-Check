@@ -1,16 +1,21 @@
-import { defaultBlocks } from '../agenda';
 import { legacyCategory } from '../domain/categories';
+import { buildDay } from '../domain/recurrence';
+import { JOB_SEARCH_TEMPLATE } from '../domain/templates';
+import { instantiateTemplate, weekStarts } from '../domain/templates/apply';
 import { ReminderDay, planGoalReminders, planReminders } from '../reminders';
 
+// Un lunes de la rutina de la plantilla inicial.
+const mondayBlocks = () => buildDay(instantiateTemplate(JOB_SEARCH_TEMPLATE, weekStarts('2026-11-16', '2026-11-17'), '2026-11-16'), '2026-11-16');
+
 const tracked = (c: string) => legacyCategory(c as never).tracked;
-const day = (date: string, blocks: ReminderDay['blocks'] = defaultBlocks('mwf')) => ({ date, dayStartMs: new Date(2026, 10, 16).getTime(), blocks });
+const day = (date: string, blocks: ReminderDay['blocks'] = mondayBlocks()) => ({ date, dayStartMs: new Date(2026, 10, 16).getTime(), blocks });
 const S = { notifStart: true, endLead: 5, muted: {} as Record<string, boolean> };
 
 describe('planReminders', () => {
   const all = planReminders([day('2026-11-16')], S, tracked, 0);
 
   test('un aviso de inicio por evento y uno de fin para los de 30 minutos o más', () => {
-    const blocks = defaultBlocks('mwf');
+    const blocks = mondayBlocks();
     expect(all.filter((r) => r.id.includes(':s'))).toHaveLength(blocks.length);
     expect(all.filter((r) => r.id.includes(':e'))).toHaveLength(blocks.filter((b) => b.e - b.s >= 30).length);
   });
