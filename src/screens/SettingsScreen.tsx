@@ -4,7 +4,9 @@ import { MESES, iso, parseISO } from '../agenda';
 import type { Ctx } from '../ctx';
 import { buildBackupParts, parseBackupParts, sizeLabel } from '../domain/backup';
 import { describeMigration, migrationReportText } from '../migration/startup';
-import { askExactAlarms, askNotifications, countScheduled, exactAlarmsGranted, notificationsGranted, scheduleTest } from '../notifications';
+import {
+  askExactAlarms, askNotifications, countScheduled, exactAlarmsGranted, getScheduleReport, notificationsGranted, scheduleTest,
+} from '../notifications';
 import { loadAllEntries } from '../store';
 import { Btn, Card, Label, Pill } from '../ui';
 
@@ -130,6 +132,14 @@ export function SettingsScreen({ c }: { c: Ctx }) {
             <Text style={[s.state, { color: t.fg }]}>{pending}</Text>
           </View>
         ) : null}
+        {(() => {
+          const r = getScheduleReport();
+          if (!r) return null;
+          const text = r.running
+            ? 'Reprogramando avisos… vuelve a esta pestaña en un momento.'
+            : `Último reprogramado: ${r.ok} de ${r.planned} avisos${r.error ? `. Error: ${r.error}` : ', sin errores'}.`;
+          return <Text style={[s.note, { color: r.error ? t.warn : t.muted }]}>{text}</Text>;
+        })()}
         <View style={s.opt}>
           <Text style={[s.optText, { color: t.fg }]}>Notificaciones</Text>
           <Text style={[s.state, { color: perm.notif ? t.ok : t.warn }]}>{perm.notif ? 'Activadas' : 'Sin permiso'}</Text>

@@ -158,9 +158,25 @@ export async function scheduleTest() {
 
 let chain: Promise<unknown> = Promise.resolve();
 
+/** Resultado del último reprogramado de avisos (para Ajustes y la prueba del tope, T2.6). */
+export interface ScheduleReport {
+  at: number;
+  /** Avisos que se intentaron programar. */
+  planned: number;
+  /** Avisos programados sin error. */
+  ok: number;
+  /** Primer error, si hubo. */
+  error: string | null;
+  /** `true` mientras se está reprogramando. */
+  running: boolean;
+}
+let lastReport: ScheduleReport | null = null;
+export const getScheduleReport = () => lastReport;
+
 /** Reprograma los avisos de los próximos 14 días. Se llama al abrir la app y al cambiar ajustes. */
 export function rescheduleAgenda(engine: AgendaEngine, s: Settings, timer: TimerState): Promise<void> {
   const run = async () => {
+    lastReport = { at: Date.now(), planned: 0, ok: 0, error: null, running: true };
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
       const exact = await exactAlarmsGranted();
@@ -179,11 +195,20 @@ export function rescheduleAgenda(engine: AgendaEngine, s: Settings, timer: Timer
       if (renewAt > now) {
         reqs.push(dateReq('renew', renewAt, 'Abre la app', 'Ábrela para renovar los avisos de las próximas dos semanas.', CH_AGENDA, exact));
       }
+      // Un aviso que falla no corta los demás: se programan todos y se guarda el primer error.
+      lastReport = { ...lastReport!, planned: reqs.length };
       for (let k = 0; k < reqs.length; k += 20) {
-        await Promise.all(reqs.slice(k, k + 20).map((r) => Notifications.scheduleNotificationAsync(r)));
+        const res = await Promise.allSettled(reqs.slice(k, k + 20).map((r) => Notifications.scheduleNotificationAsync(r)));
+        for (const x of res) {
+          if (x.status === 'fulfilled') lastReport.ok++;
+          else if (!lastReport.error) lastReport.error = x.reason instanceof Error ? x.reason.message : String(x.reason);
+        }
       }
       if (timer.endAt > now) await scheduleTimerAlert(timer);
-    } catch {}
+    } catch (e) {
+      if (lastReport && !lastReport.error) lastReport.error = e instanceof Error ? e.message : String(e);
+    }
+    if (lastReport) lastReport = { ...lastReport, running: false };
   };
   chain = chain.then(run, run);
   return chain as Promise<void>;

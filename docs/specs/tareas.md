@@ -158,7 +158,7 @@ Verificación: 132 pruebas (13 de T1.7, incluida una que comprueba que el modo p
 | T2.3 | El registro guarda `catName` y `goalName` (opcionales: los eventos anteriores no los tienen). El CSV suma dos columnas al final: `categoria_nombre` y `objetivo_nombre` |
 | T2.4 | Avisos desde el motor con un plan puro (`src/reminders.ts`): el botón "Empecé" depende de `tracked`, y funcionan en cualquier día con eventos |
 | T2.5 | Motor de progreso (`src/domain/goals.ts`): cantidad, tiempo con sesiones confirmadas, ambas y versiones por fecha (criterios CA-11 a CA-15). La pantalla de Metas conserva por ahora el cálculo actual de "Proyecto" (horas planificadas hechas) y "Ejercicio" (sesiones marcadas), según la decisión 3 |
-| T2.6 | Ajustes muestra "Avisos programados (próximos 14 días)". Falta la prueba en el Xiaomi |
+| T2.6 | Ajustes muestra "Avisos programados (próximos 14 días)" y el resultado del último reprogramado (programados de planificados y primer error). Un aviso que falla ya no corta los demás (antes, un error en una tanda de 20 detenía el resto en silencio). Primera lectura en el Xiaomi (17/11): 20 avisos programados contra unos 222 esperados; pendiente distinguir si fue una lectura a mitad del reprogramado o un error real |
 
 **Prueba de equivalencia** (`src/engine/__tests__/equivalence-test.ts`): el código actual corre sobre un almacén simulado y se compara con el motor v2 desde la misma fixture migrada, día por día del 02/11/2026 al 12/01/2027, sin cambios y después de cada operación (Solo hoy, Siempre, tarea separada, margen, restaurar, mover martes, ajustes, metas y totales). Si se rompe el motor a propósito, la prueba falla.
 
