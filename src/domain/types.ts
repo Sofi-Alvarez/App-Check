@@ -19,13 +19,30 @@ export interface Category {
   archived: boolean;
 }
 
-/** 3.2 Regla de repetición semanal. */
-export interface Rule {
+/** 3.2 Regla de repetición semanal. Los datos guardados antes de la repetición mensual no tienen `kind`. */
+export interface WeeklyRule {
+  kind?: 'weekly';
   /** Días de la semana, 0 = domingo … 6 = sábado. */
   weekdays: number[];
   /** 1 = cada semana, 2 = cada dos semanas, … */
   everyWeeks: number;
 }
+
+/**
+ * Repetición mensual: un día del mes ("el 17") o un día de la semana del mes ("el tercer martes", "el último viernes").
+ * Si el día no existe en un mes (29, 30 o 31 en un mes más corto), ese mes cae en su último día.
+ */
+export interface MonthlyRule {
+  kind: 'monthly';
+  /** 1 = cada mes, 3 = cada tres meses, … contados desde el mes de `startDate`. */
+  everyMonths: number;
+  on: { day: number } | { nth: MonthWeek; weekday: number };
+}
+
+/** Semana del mes: 1 a 4 = primera a cuarta; −1 = la última. */
+export type MonthWeek = 1 | 2 | 3 | 4 | -1;
+
+export type Rule = WeeklyRule | MonthlyRule;
 
 /** Aviso propio de un evento. `null` en la serie = usar los valores de Ajustes. */
 export interface SeriesReminder {

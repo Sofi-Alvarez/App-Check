@@ -7,12 +7,13 @@ import {
 import { DIAS, MESES, hm, iso, parseISO } from '../agenda';
 import { S } from '../i18n';
 import type { Ctx } from '../ctx';
-import { addDaysISO } from '../domain/dates';
+import { addDaysISO, monthWeekOf, weekdayOf } from '../domain/dates';
 import { describeRule, scopeHint, scopeLabel } from '../domain/describe';
 import type { EditScope, EventPatch, OpError } from '../domain/events';
+import { isMonthly, isWeekly } from '../domain/recurrence';
 import type { SeriesError } from '../domain/recurrence';
 import { COLOR_TOKENS } from '../domain/categories';
-import type { ColorToken, Rule, SeriesReminder } from '../domain/types';
+import type { ColorToken, MonthWeek, MonthlyRule, Rule, SeriesReminder } from '../domain/types';
 import { overlaps } from '../engine/day-ops';
 import { colorFor } from '../theme';
 import { Btn, Label, MONO, Pill } from '../ui';
@@ -25,7 +26,9 @@ export interface EditTarget {
   start?: number;
 }
 
-type RepeatMode = 'none' | 'daily' | 'weekly' | 'everyN';
+type RepeatMode = 'none' | 'daily' | 'weekly' | 'everyN' | 'monthly';
+/** Cómo se repite por mes: el mismo día del mes, el mismo día de la semana del mes o el último de ese día. */
+type MonthBy = 'day' | 'nth' | 'last';
 const WEEK = [1, 2, 3, 4, 5, 6, 0];
 const INITIALS = S.dates.initials;
 
@@ -79,9 +82,15 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
   const [date, setDate] = useState(series && !series.rule ? series.startDate : target.refDate);
 
   const r = series?.rule ?? null;
-  const [mode, setMode] = useState<RepeatMode>(!r ? 'none' : r.weekdays.length === 7 && r.everyWeeks === 1 ? 'daily' : r.everyWeeks === 1 ? 'weekly' : 'everyN');
-  const [days, setDays] = useState<number[]>(r?.weekdays ?? [parseISO(target.refDate).getDay()]);
-  const [everyN, setEveryN] = useState(r && r.everyWeeks > 1 ? r.everyWeeks : 2);
+  const wr = r && isWeekly(r) ? r : null;
+  const mr = r && isMonthly(r) ? r : null;
+  const [mode, setMode] = useState<RepeatMode>(
+    !r ? 'none' : mr ? 'monthly' : wr!.weekdays.length === 7 && wr!.everyWeeks === 1 ? 'daily' : wr!.everyWeeks === 1 ? 'weekly' : 'everyN',
+  );
+  const [days, setDays] = useState<number[]>(wr?.weekdays ?? [parseISO(target.refDate).getDay()]);
+  const [everyN, setEveryN] = useState(wr && wr.everyWeeks > 1 ? wr.everyWeeks : 2);
+  const [everyMonths, setEveryMonths] = useState(mr?.everyMonths ?? 1);
+  const [monthBy, setMonthBy] = useState<MonthBy>(!mr || 'day' in mr.on ? 'day' : mr.on.nth === -1 ? 'last' : 'nth');
   const [endDate, setEndDate] = useState<string | null>(series?.endDate ?? null);
   const [sheet, setSheet] = useState<null | { action: 'edit' | 'delete'; scopes: EditScope[]; patch?: EventPatch }>(null);
   // Mover una sola ocurrencia de un evento que se repite (spec 009, 3.4).
@@ -93,7 +102,28 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
 
   const s = parseHm(sText);
   const e = parseHm(eText);
-  const rule: Rule | null = mode === 'none' ? null : mode === 'daily' ? { weekdays: [0, 1, 2, 3, 4, 5, 6], everyWeeks: 1 } : { weekdays: days, everyWeeks: mode === 'everyN' ? everyN : 1 };
+  // Opciones mensuales a partir del día que se está mirando (o el guardado, si ya se repetía por mes).
+  const monthBase = series?.rule ? target.refDate : date;
+  const baseWeek = monthWeekOf(monthBase);
+  const monthOn = (by: MonthBy): MonthlyRule['on'] => {
+    if (mr && by === 'day' && 'day' in mr.on) return mr.on;
+    if (mr && by !== 'day' && 'nth' in mr.on && (mr.on.nth === -1) === (by === 'last')) return mr.on;
+    if (by === 'day') return { day: Number(monthBase.slice(8, 10)) };
+    return { nth: by === 'last' ? -1 : (baseWeek.nth as MonthWeek), weekday: weekdayOf(monthBase) };
+  };
+  const monthOptions: MonthBy[] = ['day'];
+  if (baseWeek.nth <= 4 || (mr && 'nth' in mr.on && mr.on.nth !== -1)) monthOptions.push('nth');
+  if (baseWeek.last || (mr && 'nth' in mr.on && mr.on.nth === -1)) monthOptions.push('last');
+  const by: MonthBy = monthOptions.includes(monthBy) ? monthBy : 'day';
+  const monthLabel = (o: MonthBy) => {
+    const on = monthOn(o);
+    return 'day' in on ? E.onMonthDay(on.day) : E.onMonthWeekday(S.describe.ordinals[on.nth], S.describe.dayNames[on.weekday]);
+  };
+  const rule: Rule | null =
+    mode === 'none' ? null
+    : mode === 'daily' ? { weekdays: [0, 1, 2, 3, 4, 5, 6], everyWeeks: 1 }
+    : mode === 'monthly' ? { kind: 'monthly', everyMonths, on: monthOn(by) }
+    : { weekdays: days, everyWeeks: mode === 'everyN' ? everyN : 1 };
   const startDate = series?.rule ? series.startDate : date;
   const patch: EventPatch = {
     title: name, categoryId: cat, startMin: s ?? 0, endMin: e ?? 0, note, rule, endDate: rule ? endDate : null,
@@ -106,7 +136,7 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
   else if (s == null || e == null) formError = E.timesFormat;
   else if (e <= s) formError = ERRORS['time-order'];
   else if (e - s < 5) formError = ERRORS['too-short'];
-  else if (rule && rule.weekdays.length === 0) formError = ERRORS['no-weekdays'];
+  else if (rule && isWeekly(rule) && rule.weekdays.length === 0) formError = ERRORS['no-weekdays'];
   else if (moving && series && ev.allowedScopes(series.id, target.refDate, patch).length === 0) {
     formError = E.moveNeedsSameRule;
   }
@@ -263,7 +293,7 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
         <View style={{ gap: 8 }}>
           <Label t={t}>{E.repeat}</Label>
           <View style={st.pills}>
-            {([['none', E.repeatNone], ['daily', E.repeatDaily], ['weekly', E.repeatWeekly], ['everyN', E.repeatEveryN]] as const).map(([k, label]) => (
+            {([['none', E.repeatNone], ['daily', E.repeatDaily], ['weekly', E.repeatWeekly], ['everyN', E.repeatEveryN], ['monthly', E.repeatMonthly]] as const).map(([k, label]) => (
               <Pill key={k} t={t} label={label} selected={mode === k} onPress={() => setMode(k)} />
             ))}
           </View>
@@ -281,12 +311,30 @@ function Form({ c, target, onClose }: { c: Ctx; target: EditTarget; onClose: () 
               <Pill t={t} label="+" a11y={E.moreWeeks} onPress={() => setEveryN(Math.min(8, everyN + 1))} />
             </View>
           ) : null}
+          {mode === 'monthly' ? (
+            <>
+              <View style={st.pills}>
+                {monthOptions.map((o) => (
+                  <Pill key={o} t={t} label={monthLabel(o)} selected={by === o} onPress={() => setMonthBy(o)} />
+                ))}
+              </View>
+              <View style={st.stepper}>
+                <Pill t={t} label="−" a11y={E.fewerMonths} onPress={() => setEveryMonths(Math.max(1, everyMonths - 1))} />
+                <Text style={[st.stepText, { color: t.fg }]}>{E.everyNMonths(everyMonths)}</Text>
+                <Pill t={t} label="+" a11y={E.moreMonths} onPress={() => setEveryMonths(Math.min(12, everyMonths + 1))} />
+              </View>
+              {(() => {
+                const on = monthOn(by);
+                return 'day' in on && on.day > 28 ? <Text style={[st.note, { color: t.muted }]}>{E.monthDayNote}</Text> : null;
+              })()}
+            </>
+          ) : null}
           {mode !== 'none' ? (
             <>
               <Label t={t}>{E.ends}</Label>
               <View style={st.pills}>
                 <Pill t={t} label={E.never} selected={endDate === null} onPress={() => setEndDate(null)} />
-                <Pill t={t} label={E.onDate} selected={endDate !== null} onPress={() => setEndDate(endDate ?? addDaysISO(startDate, 28))} />
+                <Pill t={t} label={E.onDate} selected={endDate !== null} onPress={() => setEndDate(endDate ?? addDaysISO(startDate, mode === 'monthly' ? 182 : 28))} />
               </View>
               {endDate !== null ? (
                 <View style={st.stepper}>

@@ -2,6 +2,7 @@
 
 import { weekdayOf } from './dates';
 import type { EditScope } from './events';
+import { isMonthly } from './recurrence';
 import type { Rule } from './types';
 import { S } from '../i18n';
 
@@ -22,6 +23,13 @@ function listDays(days: number[]): string {
 /** La regla en lenguaje natural: "Cada 2 semanas, el martes, desde el 03/11, hasta el 30/12". */
 export function describeRule(rule: Rule | null, startDate: string, endDate: string | null): string {
   if (!rule) return T.single(T.dayNames[weekdayOf(startDate)], shortDate(startDate));
+  if (isMonthly(rule)) {
+    const on = 'day' in rule.on
+      ? rule.on.day > 28 ? T.monthDayShort(rule.on.day) : T.monthDay(rule.on.day)
+      : T.monthWeekday(T.ordinals[rule.on.nth], T.dayNames[rule.on.weekday]);
+    const every = rule.everyMonths === 1 ? T.everyMonth(on) : T.everyNMonths(rule.everyMonths, on);
+    return T.since(every, shortDate(startDate)) + (endDate ? T.until(shortDate(endDate)) : '');
+  }
   const all = rule.weekdays.length === 7;
   const weekdaysOnly = rule.weekdays.length === 5 && [1, 2, 3, 4, 5].every((d) => rule.weekdays.includes(d));
   const days = all ? T.everyDay : weekdaysOnly ? T.weekdaysOnly : T.onDays(rule.weekdays.length, listDays(rule.weekdays));

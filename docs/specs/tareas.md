@@ -342,4 +342,6 @@ E1 y E2 no agregan funciones nuevas visibles, pero son las que más riesgo reduc
 
 ## 7. Fuera de este plan
 
-Navegación Hoy / Semana / Ajustes, migración a Expo Router, repetición mensual, eventos que cruzan la medianoche, sincronización con calendarios y nube, IA, iOS, traducción de los textos, y la importación de plantillas de otras personas.
+**Hecho después del plan:** repetición mensual (17/11/2026; ver spec 010, 3.2). 237 pruebas en verde.
+
+Navegación Hoy / Semana / Ajustes, migración a Expo Router, eventos que cruzan la medianoche, sincronización con calendarios y nube, IA, iOS, traducción de los textos, y la importación de plantillas de otras personas.

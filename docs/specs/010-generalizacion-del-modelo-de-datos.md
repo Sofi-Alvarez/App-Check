@@ -90,7 +90,16 @@ Una fecha cumple la regla si: está entre `startDate` y `endDate`, su día de la
 
 La regla actual "martes con adscripción cada 14 días desde `2026-11-03`" queda como `weekdays: [2]`, `everyWeeks: 2`, `startDate: 2026-11-03`. "Martes sin adscripción" es lo mismo con `startDate: 2026-11-10`. El "ancla" deja de ser un ajuste global y pasa a ser la `startDate` de cada serie.
 
-Fuera de esta versión: repetición mensual o anual, y "el último viernes del mes". Se pueden agregar después como nuevos campos de `rule` sin cambiar el resto.
+**Repetición mensual (agregada el 17/11/2026, después del plan).** La regla puede ser semanal (la de arriba; los datos guardados antes no tienen `kind` y se leen como semanales) o mensual, con `kind: 'monthly'`:
+
+| Campo | Valor |
+|---|---|
+| `everyMonths` | entero 1 o más, contado desde el mes de `startDate` |
+| `on` | `{ day: 1 a 31 }` ("el día 17") o `{ nth: 1, 2, 3, 4 o −1, weekday: 0 a 6 }` ("el tercer martes"; −1 = "el último viernes") |
+
+Si el día del mes no existe en un mes (29, 30 o 31 en un mes más corto), ese mes el evento cae el último día del mes, así no se saltea ningún mes. El editor ofrece las opciones a partir del día que se está mirando: "El día 17", "El tercer martes" y, si es la última semana del mes, "El último martes". Los alcances, las excepciones, los avisos y las metas funcionan igual que con la semanal.
+
+Fuera de esta versión: repetición anual.
 
 ### 3.3 Excepción
 

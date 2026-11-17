@@ -289,3 +289,23 @@ Anota solo lo que **no** salga como dice cada paso (el número del paso y qué p
 - El resto de los criterios ya lo cubren las 220 pruebas automáticas: reglas del modelo CA-01 a CA-15, margen CA-03/CA-04, CG-11, CG-12, CG-24, CG-25 y CG-29.
 - Los de migración (CA-16, CA-18, CA-19 y CG-32) se verificaron en tu teléfono en la fase 2. Ese código ya no existe.
 - "Restaurar la plantilla inicial" y "Borrar toda la agenda" cambian tu agenda real. Están cubiertos por pruebas automáticas y tienen "Deshacer", pero no hace falta tocarlos.
+
+## Repetición mensual
+
+Se publica igual que siempre, sin APK nuevo:
+
+```bash
+git pull
+```
+
+```bash
+npx eas-cli@latest update --channel preview --environment preview --message "repetición mensual"
+```
+
+### Qué probar en el teléfono
+1. "+ Nuevo evento" un martes 17 → Repetición → **"Cada mes"**. Aparecen "El día 17" y "El tercer martes". Elige una; la descripción de abajo lo dice en palabras.
+2. Guarda y mira el mes siguiente: aparece el día que corresponde (el 17/12 o el martes 15/12).
+3. Con "+", prueba "Cada 2 meses": el mes siguiente no aparece y el otro sí.
+4. Un evento "el día 31": en febrero aparece el 28.
+5. Edita el evento mensual: pregunta "Solo …", "A partir de…" o "Siempre", como los semanales.
+6. Si estás mirando un día de la última semana del mes, aparece también "El último …" (por ejemplo, "El último viernes").

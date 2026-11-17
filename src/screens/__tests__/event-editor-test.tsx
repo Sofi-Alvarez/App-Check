@@ -171,4 +171,30 @@ describe('EventEditor', () => {
     await fireEvent.press(screen.getByLabelText('Todos los días'));
     expect(screen.getByText('Para mover un solo día, deja la repetición como estaba.')).toBeTruthy();
   });
+
+  test('crear un evento que se repite cada mes, el tercer martes', async () => {
+    const { c, engine, runs } = setup();
+    await render(<EventEditor c={c} target={{ id: null, refDate: '2026-11-17', start: 1200 }} onClose={jest.fn()} />);
+    await fireEvent.changeText(screen.getByLabelText('Nombre del evento'), 'Pagar alquiler');
+    await fireEvent.press(screen.getByLabelText('Cada mes'));
+    expect(screen.getByLabelText('El día 17')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('El tercer martes'));
+    expect(screen.getByText(/Cada mes, el tercer martes, desde el 17\/11/)).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Guardar'));
+    expect(runs).toEqual(['Se creó "Pagar alquiler"']);
+    const has = (d: string) => engine.blocksFor(d).some((b) => b.t === 'Pagar alquiler');
+    expect([has('2026-11-17'), has('2026-11-24'), has('2026-12-15'), has('2027-01-19')]).toEqual([true, false, true, true]);
+  });
+
+  test('editar un evento mensual lo abre con su repetición y permite "Solo este día"', async () => {
+    const { c, engine } = setup();
+    engine.events.create('2026-11-30', { title: 'Factura', categoryId: 'work', startMin: 1200, endMin: 1230, note: '', rule: { kind: 'monthly', everyMonths: 1, on: { day: 31 } }, endDate: null });
+    const b = engine.blocksFor('2027-02-28').find((x) => x.t === 'Factura')!;
+    await render(<EventEditor c={c} target={{ id: b.id, refDate: '2027-02-28' }} onClose={jest.fn()} />);
+    expect(screen.getByLabelText('El día 31').props.accessibilityState).toEqual({ selected: true });
+    expect(screen.getByText(/en los meses que no tienen ese día/i)).toBeTruthy();
+    await fireEvent.changeText(screen.getByLabelText('Nombre del evento'), 'Factura de luz');
+    await fireEvent.press(screen.getByLabelText('Guardar'));
+    expect(screen.getByText(/^Solo el 28\/02$/)).toBeTruthy();
+  });
 });

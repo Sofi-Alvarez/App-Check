@@ -2,6 +2,7 @@
 // fecha elegida. No queda vínculo con la plantilla: editarla después no cambia lo aplicado.
 
 import { addDaysISO, fromDayNumber, mondayNumber } from '../dates';
+import { cloneRule, isWeekly } from '../recurrence';
 import type { AgendaState, Category, Goal, Series, Template } from '../types';
 
 export interface ApplyOptions {
@@ -49,7 +50,7 @@ export function applyTemplate(t: Template, opts: ApplyOptions): Applied {
       // No antes de la fecha elegida; para las reglas de cada dos semanas cuenta el lunes, que no cambia.
       startDate: weekStart < opts.startDate ? opts.startDate : weekStart,
       endDate: null,
-      rule: s.rule ? { weekdays: [...s.rule.weekdays], everyWeeks: s.rule.everyWeeks } : null,
+      rule: s.rule ? cloneRule(s.rule) : null,
     };
   });
 
@@ -92,8 +93,8 @@ export function instantiateTemplate(t: Template, starts: WeekStarts, effectiveFr
     categories: t.categories.map((c) => ({ ...c })),
     series: t.series.map(({ weekOffset, ...s }) => ({
       ...s,
-      rule: s.rule ? { weekdays: [...s.rule.weekdays], everyWeeks: s.rule.everyWeeks } : null,
-      startDate: !s.rule || s.rule.everyWeeks === 1 ? starts.weekly : weekOffset % 2 === 0 ? starts.a : starts.b,
+      rule: s.rule ? cloneRule(s.rule) : null,
+      startDate: !s.rule || !isWeekly(s.rule) || s.rule.everyWeeks === 1 ? starts.weekly : weekOffset % 2 === 0 ? starts.a : starts.b,
       endDate: null,
     })),
     exceptions: [],

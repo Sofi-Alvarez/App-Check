@@ -4,7 +4,7 @@
 // referencia: la ocurrencia que se estaba mirando al abrir el editor.
 
 import { addDaysISO } from './dates';
-import { occursOn, validateSeries } from './recurrence';
+import { occursOn, ruleKey, validateSeries } from './recurrence';
 import type { SeriesError } from './recurrence';
 import type { AgendaState, ExceptionFields, Rule, Series, SeriesException, SeriesReminder } from './types';
 
@@ -33,9 +33,7 @@ export type OpError =
   | { kind: 'scope-not-allowed'; reason: 'rule-changed' }
   | { kind: 'not-on-date' };
 
-const sameRule = (a: Rule | null, b: Rule | null) =>
-  a === b ||
-  (a !== null && b !== null && a.everyWeeks === b.everyWeeks && [...a.weekdays].sort().join() === [...b.weekdays].sort().join());
+const sameRule = (a: Rule | null, b: Rule | null) => a === b || ruleKey(a) === ruleKey(b);
 
 const find = (st: AgendaState, id: string) => st.series.find((s) => s.id === id);
 

@@ -1,6 +1,6 @@
 import { SEED_CATEGORIES } from '../../categories';
 import { buildDay, validateSeries } from '../../recurrence';
-import type { Category } from '../../types';
+import type { Category, WeeklyRule } from '../../types';
 import { instantiateTemplate, tuesdayOf, weekStarts } from '../apply';
 import { EMPTY_TEMPLATE, JOB_SEARCH_TEMPLATE, TEMPLATES, applyTemplate } from '../index';
 
@@ -65,8 +65,8 @@ describe('applyTemplate', () => {
     const applied = applyTemplate(JOB_SEARCH_TEMPLATE, { startDate: '2026-11-03', newId: counter() });
     const tIds = new Set([...JOB_SEARCH_TEMPLATE.series, ...JOB_SEARCH_TEMPLATE.categories, ...JOB_SEARCH_TEMPLATE.goals].map((x) => x.id));
     for (const x of [...applied.series, ...applied.categories, ...applied.goals]) expect(tIds.has(x.id)).toBe(false);
-    applied.series[0].rule!.weekdays.push(6);
-    expect(JOB_SEARCH_TEMPLATE.series[0].rule!.weekdays).not.toContain(6);
+    (applied.series[0].rule as WeeklyRule).weekdays.push(6);
+    expect((JOB_SEARCH_TEMPLATE.series[0].rule as WeeklyRule).weekdays).not.toContain(6);
   });
 
   test('las metas quedan asociadas a las series nuevas y vigentes desde la fecha elegida', () => {
