@@ -20,6 +20,8 @@ export const KEYS = {
   goals: 'agenda2:goals',
   legacyBid: 'agenda2:legacyBid',
   settings: 'agenda2:settings',
+  /** Transitorio hasta la fase 3: semana de referencia de los martes alternos para el vocabulario actual. */
+  legacyTueAnchor: 'agenda2:legacyTueAnchor',
   dayPrefix: 'agenda:day:',
   logPrefix: 'agenda:log:',
   backupPrefix: 'backup:v1:',
@@ -52,6 +54,8 @@ export interface Repository {
   loadAllLog(): LogEvent[];
   /** Eventos de un día armados desde el modelo v2. Vacío si no hay modelo v2. */
   getDay(date: string): DayBlock[];
+  /** Valor crudo de una clave (o `null`). */
+  getValue(key: string): string | null;
   /** Todas las claves con su valor (para la copia de seguridad y la migración). */
   snapshot(): [string, string][];
   /** Escribe en orden. Si una escritura falla, se detiene y lanza el error (las anteriores ya quedaron escritas). */
@@ -140,6 +144,8 @@ export function createRepository(kv: KV): Repository {
       if (!state) return [];
       return buildDay(state, date, cache!.index);
     },
+
+    getValue: (key) => kv.getItem(key),
 
     snapshot() {
       const out: [string, string][] = [];

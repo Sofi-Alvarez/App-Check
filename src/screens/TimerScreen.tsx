@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { fmtClock } from '../agenda';
 import type { Ctx } from '../ctx';
+import { S } from '../i18n';
 import { Bar, Btn, Card, Label, MONO, Pill } from '../ui';
+
+const T = S.timer;
 
 export function TimerScreen({ c }: { c: Ctx }) {
   const { theme: t, timer, timerLeft } = c;
@@ -11,12 +14,12 @@ export function TimerScreen({ c }: { c: Ctx }) {
   const paused = !running && timerLeft > 0 && timerLeft < timer.total;
   const finished = !running && timer.total > 0 && timerLeft <= 0;
   const status = running
-    ? timer.label || 'Enfoque'
+    ? timer.label || T.focus
     : paused
-      ? `En pausa · ${timer.label || 'Enfoque'}`
+      ? T.pausedLabel(timer.label || T.focus)
       : finished
-        ? `Terminado · ${timer.label || 'Enfoque'}`
-        : 'Sin timer activo';
+        ? T.finishedLabel(timer.label || T.focus)
+        : T.none;
   const pct = timer.total ? (1 - timerLeft / timer.total) * 100 : 0;
   const customMin = Number(custom);
   const customOk = Number.isFinite(customMin) && customMin >= 1 && customMin <= 240;
@@ -27,47 +30,47 @@ export function TimerScreen({ c }: { c: Ctx }) {
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      <Text style={[s.h1, { color: t.fg }]}>Timer</Text>
+      <Text style={[s.h1, { color: t.fg }]}>{T.title}</Text>
       <Card t={t} style={{ gap: 14 }}>
         <Text style={[s.clock, { color: t.fg }]}>{fmtClock(timerLeft)}</Text>
         <Text style={[s.status, { color: t.muted }]}>{status}</Text>
         <Bar t={t} pct={pct} />
         <View style={s.row}>
-          <Btn t={t} style={{ flex: 1 }} label={running ? 'Pausar' : paused ? 'Seguir' : 'Iniciar'} onPress={c.toggleTimer} />
-          <Btn t={t} style={{ flex: 1 }} kind="ghost" label="Reiniciar" onPress={c.resetTimer} />
+          <Btn t={t} style={{ flex: 1 }} label={running ? T.pause : paused ? T.resume : T.start} onPress={c.toggleTimer} />
+          <Btn t={t} style={{ flex: 1 }} kind="ghost" label={T.reset} onPress={c.resetTimer} />
         </View>
       </Card>
 
       <Card t={t}>
-        <Label t={t}>Iniciar uno nuevo</Label>
+        <Label t={t}>{T.newOne}</Label>
         <View style={s.presets}>
           {[25, 45, 60].map((m) => (
-            <Pill key={m} t={t} label={`${m} min`} onPress={() => c.startTimer(m, 'Enfoque')} />
+            <Pill key={m} t={t} label={T.minutes(m)} onPress={() => c.startTimer(m, T.focus)} />
           ))}
         </View>
         <View style={s.row}>
           <TextInput
-            accessibilityLabel="Minutos del timer"
+            accessibilityLabel={T.minutesA11y}
             value={custom}
             onChangeText={(v) => setCustom(v.replace(/[^0-9]/g, ''))}
             keyboardType="number-pad"
-            placeholder="Minutos"
+            placeholder={T.minutesPlaceholder}
             placeholderTextColor={t.muted}
             maxLength={3}
             style={[s.input, { backgroundColor: t.surface2, color: t.fg }]}
           />
           <Btn
             t={t}
-            label="Iniciar"
+            label={T.start}
             disabled={!customOk}
             onPress={() => {
-              c.startTimer(customMin, 'Enfoque');
+              c.startTimer(customMin, T.focus);
               setCustom('');
             }}
           />
         </View>
         <Text style={[s.note, { color: t.muted }]}>
-          Al terminar suena un aviso aunque la app esté cerrada. En la pestaña Agenda cada bloque tiene su propio botón de timer.
+          {T.note}
         </Text>
       </Card>
     </ScrollView>

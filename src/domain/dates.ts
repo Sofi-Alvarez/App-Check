@@ -29,5 +29,17 @@ export const weekdayOf = (date: string) => (((dayNumber(date) + 4) % 7) + 7) % 7
 /** Número de día del lunes de la semana de esa fecha. */
 export const mondayNumber = (date: string) => dayNumber(date) - ((weekdayOf(date) + 6) % 7);
 
+/** Año, mes (1 a 12) y día de una fecha. */
+export const dateParts = (date: string): [number, number, number] => date.split('-').map(Number) as [number, number, number];
+
+/** Cantidad de días de un mes (mes de 1 a 12). */
+export const daysInMonth = (year: number, month: number) => new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+/** Semana del mes en la que cae la fecha (1 = días 1 a 7, …, 5 = días 29 a 31) y si es la última de su día. */
+export function monthWeekOf(date: string): { nth: number; last: boolean } {
+  const [y, m, d] = dateParts(date);
+  return { nth: Math.floor((d - 1) / 7) + 1, last: d + 7 > daysInMonth(y, m) };
+}
+
 /** Fecha más temprana de una lista (`null` si está vacía). */
 export const minDate = (dates: string[]) => (dates.length ? dates.reduce((a, b) => (b < a ? b : a)) : null);

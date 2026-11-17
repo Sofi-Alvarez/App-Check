@@ -90,7 +90,7 @@ Verificación: 45 pruebas pasan en cuatro zonas horarias (Argentina, UTC, Los Á
 | T1.4 ✅ | **Categorías semilla** con las propiedades de 010 §3.1 y su mapeo desde los ocho nombres actuales | S | T1.1 | CA-01 |
 | T1.5 ✅ | **Migración v1 a v2** como función pura (entrada: claves actuales; salida: claves nuevas). Idempotente. Copia previa bajo `backup:v1:`. Maneja el id repetido con horarios distintos y crea `legacyBid` | L | T1.2, T1.3, T1.4 | CA-16, CA-18, CA-19 |
 | T1.6 ✅ | **Plantilla `busqueda-de-empleo`**: sacar de `agenda.ts` el contenido (bloques, notas, metas) y dejarlo como datos de plantilla | M | T1.1 | 010 §3.6 |
-| T1.7 | **Conectar la migración al arranque** (`App.tsx`), con marca de versión, reintento si falla y aviso claro si no se pudo | S | T1.5 | CA-18 |
+| T1.7 ✅ (modo prueba) | **Conectar la migración al arranque** (`App.tsx`), con marca de versión, reintento si falla y aviso claro si no se pudo | S | T1.5 | CA-18 |
 
 **Estado de T1.1 a T1.6 (17/11/2026).** Hechas en código, con 119 pruebas en verde (typecheck, lint y empaquetado para Android también pasan). **La app todavía no usa nada de esto**: se conecta en T1.7, que no está hecha.
 
@@ -115,6 +115,14 @@ Verificación: 45 pruebas pasan en cuatro zonas horarias (Argentina, UTC, Los Á
 
 **Verificación de la autoverificación:** si se invierten las semanas de los martes, la migración se niega a escribir ("no coincide con la actual en 11 días").
 
+**Estado de T1.7 (17/11/2026).** La migración corre al abrir la app (`src/migration/startup.ts`, conectada en `App.tsx`) y su resultado se ve en una tarjeta de Ajustes con un botón "Compartir informe". Decisiones aceptadas por Sofía para las seis situaciones de la migración (ver arriba).
+
+**Se publica en modo prueba (`MIGRATION_MODE = 'dry-run'`)**: corre la migración completa con los datos reales del teléfono, en memoria, y **no escribe nada**. Motivo: si se aplicara ya, la app seguiría leyendo y editando con el formato viejo hasta la fase 2, y cualquier edición de esos días no llegaría al modelo nuevo. El modo `apply` (escribe de verdad, avisa si se niega y reintenta si se corta) está implementado y probado, y se activa en la entrega E2 junto con la fase 2. El informe compartido no incluye títulos ni notas de las tareas.
+
+Verificación: 132 pruebas (13 de T1.7, incluida una que comprueba que el modo prueba no escribe ni una clave), typecheck, lint, empaquetado para Android y CI.
+
+**Resultado en el teléfono (17/11/2026).** Sofía publicó la actualización y compartió el informe: "Modo: dry-run · Estado: ok · Prueba correcta · 66 eventos en el formato nuevo · 72 días revisados, sin diferencias". Sin casos especiales: ninguna tarea separada, ninguna marca de hecho reescrita, ninguna edición de un día, de fin de semana ni datos desconocidos. Los 66 eventos coinciden con la plantilla original, así que en sus datos actuales no hay ediciones de la agenda. **La migración queda validada con datos reales. Fase 1 completa en modo prueba**; la migración real se activa en E2, al final de la fase 2.
+
 **Prueba en el teléfono (obligatoria):**
 1. Exportar la copia de seguridad (T0.1) y guardarla fuera del teléfono.
 2. Instalar la versión con la migración.
@@ -129,12 +137,46 @@ Verificación: 45 pruebas pasan en cuatro zonas horarias (Argentina, UTC, Los Á
 
 | ID | Tarea | Tamaño | Depende de | Cubre |
 |---|---|---|---|---|
-| T2.1 | **Reemplazar `blocksFor`, `dayType`, `listFor` y `loadOverride`** en `schedule.ts` por `buildDay`. Quitar `settings.anchor` y todo uso de `DayType` (incluido el listado de martes con adscripción en Ajustes) | M | T1.7 | CA-05 a 10 |
-| T2.2 | **Margen con propiedades de categoría** (`movable`, `marginPreference`) y escritura como excepción `modified`. Se portan los casos actuales como pruebas de regresión | M | T2.1 | CA-03, CA-04 |
-| T2.3 | **Registro con copias de nombre**: `catName`, `goalName` y título del momento; `bid` = id de la serie. Actualizar `eventsToCsv` con las columnas nuevas | S | T2.1 | CA-17 |
-| T2.4 | **Avisos con el modelo nuevo**: usar `tracked` en lugar de nombres de categoría, silenciar por id de evento, soportar fin de semana. Extraer la construcción de avisos a una función pura para poder probarla | M | T2.1 | CG-30, CG-31 |
-| T2.5 | **Motor de progreso de metas** (cantidad, tiempo, ambas, versiones por fecha). Reemplaza `goalsFor`, `GOAL_LABELS` y `weekRows()` | L | T2.1, T1.4 | CA-11 a 15 |
-| T2.6 | **Prueba del tope de avisos en el Xiaomi** (D2): programar eventos diarios en 14, 7 y 3 días y medir cuántos suenan. Resultado: decidir el largo de la ventana. Es una prueba, no un desarrollo | S | T2.4 | spec 009 decisión 2 |
+| T2.1 ✅ | **Reemplazar `blocksFor`, `dayType`, `listFor` y `loadOverride`** en `schedule.ts` por `buildDay`. Quitar `settings.anchor` y todo uso de `DayType` (incluido el listado de martes con adscripción en Ajustes) | M | T1.7 | CA-05 a 10 |
+| T2.2 ✅ | **Margen con propiedades de categoría** (`movable`, `marginPreference`) y escritura como excepción `modified`. Se portan los casos actuales como pruebas de regresión | M | T2.1 | CA-03, CA-04 |
+| T2.3 ✅ | **Registro con copias de nombre**: `catName`, `goalName` y título del momento; `bid` = id de la serie. Actualizar `eventsToCsv` con las columnas nuevas | S | T2.1 | CA-17 |
+| T2.4 ✅ | **Avisos con el modelo nuevo**: usar `tracked` en lugar de nombres de categoría, silenciar por id de evento, soportar fin de semana. Extraer la construcción de avisos a una función pura para poder probarla | M | T2.1 | CG-30, CG-31 |
+| T2.5 ✅ | **Motor de progreso de metas** (cantidad, tiempo, ambas, versiones por fecha). Reemplaza `goalsFor`, `GOAL_LABELS` y `weekRows()` | L | T2.1, T1.4 | CA-11 a 15 |
+| T2.6 ✅ | **Prueba del tope de avisos en el Xiaomi** (D2): programar eventos diarios en 14, 7 y 3 días y medir cuántos suenan. Resultado: decidir el largo de la ventana. Es una prueba, no un desarrollo | S | T2.4 | spec 009 decisión 2 |
+
+**Estado de la fase 2 (17/11/2026).** Hecha en código, con 164 pruebas en verde (typecheck, lint y empaquetado para Android también pasan).
+
+**Diseño: un motor de agenda con dos implementaciones** (`src/engine/`). Las pantallas hablan con un contrato (`AgendaEngine`) y no saben de dónde vienen los datos:
+- `v1.ts` envuelve el código que ya funcionaba (`schedule.ts`, `store.ts`) sin cambiarlo.
+- `v2.ts` hace lo mismo sobre el modelo nuevo. `legacy-ops.ts` traduce "Solo hoy", "Siempre" por tipo de día, el margen, restaurar y mover los martes a series y excepciones.
+- La app elige el motor al arrancar (`boot()` en `App.tsx`): v2 solo si la migración real ya corrió y los datos nuevos se leen bien; si no, sigue con v1. El formato viejo no se borra nunca, así que la app no puede quedar sin agenda.
+
+| Tarea | Qué quedó |
+|---|---|
+| T2.1 | La agenda del día, el evento actual, las listas por tipo de día y los martes salen del motor. En v2, sin ancla en los ajustes (queda una clave de transición `agenda2:legacyTueAnchor` para el vocabulario actual, hasta la fase 3) |
+| T2.2 | Margen sobre las propiedades de la categoría (`movable`, `marginPreference`) en `src/engine/margin.ts`; en v2 se guarda como excepciones del día |
+| T2.3 | El registro guarda `catName` y `goalName` (opcionales: los eventos anteriores no los tienen). El CSV suma dos columnas al final: `categoria_nombre` y `objetivo_nombre` |
+| T2.4 | Avisos desde el motor con un plan puro (`src/reminders.ts`): el botón "Empecé" depende de `tracked`, y funcionan en cualquier día con eventos |
+| T2.5 | Motor de progreso (`src/domain/goals.ts`): cantidad, tiempo con sesiones confirmadas, ambas y versiones por fecha (criterios CA-11 a CA-15). La pantalla de Metas conserva por ahora el cálculo actual de "Proyecto" (horas planificadas hechas) y "Ejercicio" (sesiones marcadas), según la decisión 3 |
+| T2.6 | Ajustes muestra "Avisos programados (próximos 14 días)" y el resultado del último reprogramado (programados de planificados y primer error). Un aviso que falla ya no corta los demás (antes, un error en una tanda de 20 detenía el resto en silencio). En el Xiaomi (17/11): la primera lectura dio 20 (se leyó a mitad del reprogramado) y la segunda **222, exactamente lo calculado** para 10 días hábiles en la ventana de 14 días. El aviso de prueba suena. **Conclusión:** 222 está muy por debajo del tope de unas 500 alarmas de Android, así que la ventana de 14 días se mantiene. Revisar de nuevo si la agenda suma eventos diarios o de fin de semana (fase 3) |
+
+**Prueba de equivalencia** (`src/engine/__tests__/equivalence-test.ts`): el código actual corre sobre un almacén simulado y se compara con el motor v2 desde la misma fixture migrada, día por día del 02/11/2026 al 12/01/2027, sin cambios y después de cada operación (Solo hoy, Siempre, tarea separada, margen, restaurar, mover martes, ajustes, metas y totales). Si se rompe el motor a propósito, la prueba falla.
+
+**Diferencias aceptadas o visibles (mínimas):**
+1. En la v1, un día con cambios "Solo hoy" quedaba congelado frente a cambios "Siempre" posteriores. En la v2, ese día recibe el cambio y conserva solo lo que se cambió ese día (como pide la spec 009). Hay una prueba que lo documenta.
+2. Las tarjetas de Metas usan el nombre de la meta: "Posts" en vez de "Post publicado" o "Post programado".
+3. "Postulaciones" aparece también los martes con adscripción (decisión 2).
+4. Si se mueven los martes con cambios "Solo hoy" en un martes, esos cambios quedan en el martes que ya no corresponde (en la v1 seguían en ese día). Caso raro.
+
+**E2b activado (17/11/2026).** Sofía confirmó que los avisos reales suenan con el teléfono bloqueado y subió una copia nueva a Drive. La copia se validó con `parseBackupParts` (21 claves, completa) y la migración corrida sobre ella dio lo mismo que la prueba en el teléfono (66 series, 72 días verificados, sin casos especiales). `MIGRATION_MODE` pasó a `'apply'`.
+
+**Corrección antes de publicar.** Una prueba temporal con la copia real (no subida al repo) comparó el motor v1 con el v2 ya migrado: agenda del 27/10/2026 al 15/01/2027, tarjetas de Metas, totales de tres semanas y ajustes. Encontró que las fechas anteriores a la semana del primer dato aparecían vacías en la v2 (la v1 muestra la agenda en cualquier fecha pasada). Ahora las series migradas empiezan 52 semanas antes del primer dato (`HISTORY_DAYS`) y la autoverificación cubre también ese año. Con la corrección, las cuatro comparaciones con datos reales coinciden.
+
+**Publicado y migrado en el teléfono (17/11/2026, 16:15).** Ajustes muestra en verde "Tu agenda se pasó al formato nuevo", con 66 eventos y 436 días revisados sin diferencias. Avisos: "Último reprogramado: 219 de 219 avisos, sin errores" (219 en vez de 222 porque ya habían pasado los de esa tarde). La app usa el motor v2. Pendiente: que Sofía revise tres días con registro, Metas y Datos.
+
+**Publicación en dos pasos (recomendado):**
+- **E2a, ahora:** esta versión con la migración todavía en modo prueba. La app sigue con el motor v1; cambian por dentro los avisos, el registro con nombres, el CSV y el contador de avisos. Sirve para la prueba del tope (T2.6) y para comprobar que nada visible cambió.
+- **E2b, después:** copia de seguridad nueva en Drive, cambiar `MIGRATION_MODE` a `'apply'` y publicar. Ahí migra de verdad y pasa al motor v2. Revisar tres días con registro.
 
 **Prueba en el teléfono:** agenda de varios días, avisos de mañana a la hora correcta, un margen aplicado, y la pantalla de metas con los mismos números de antes.
 
@@ -146,13 +188,37 @@ Verificación: 45 pruebas pasan en cuatro zonas horarias (Argentina, UTC, Los Á
 
 | ID | Tarea | Tamaño | Depende de | Cubre |
 |---|---|---|---|---|
-| T3.1 | **Operaciones puras de edición y borrado con alcance**: `editEvent(alcance)` y `deleteEvent(alcance)` para "Solo hoy", "A partir de hoy" y "Siempre". Incluye partir una serie, cerrar con `endDate` y conservar las excepciones | L | T2.1 | CG-07 a 15 |
-| T3.2 | **Deshacer** por instantánea del estado afectado, un solo paso, 8 segundos | S | T3.1 | CG-17 |
-| T3.3 | **Editor de eventos** (reemplaza `TaskEditor.tsx`): campos, validaciones, repetición con descripción en lenguaje natural ("Cada 2 semanas, el martes, desde el 03/11"), aviso de superposición | L | T3.1 | CG-01 a 06 |
-| T3.4 | **Hoja de alcance** con tres opciones, sin ninguna preseleccionada, con etiquetas dinámicas ("Solo el 24/11", "A partir del 24/11"), la opción "Solo hoy" oculta si cambió la regla y la línea "N días tienen cambios propios" | M | T3.3 | CG-10, CG-12 |
-| T3.5 | **Eliminar**: confirmación con cantidad de días y sesiones registradas, y bloqueo si hay una sesión en curso | M | T3.1 | CG-15, CG-16 |
-| T3.6 | **Cualquier fecha, incluido fin de semana**: la vista del día muestra sábados y domingos (hoy devuelve vacío) y permite crear con "+" | M | T2.1 | CG-01 |
-| T3.7 | **Efectos tras cada cambio**: reprogramar avisos y refrescar Agenda, Metas y Datos sin reabrir | S | T3.3, T2.4 | CG-30, CG-31 |
+| T3.1 ✅ | **Operaciones puras de edición y borrado con alcance**: `editEvent(alcance)` y `deleteEvent(alcance)` para "Solo hoy", "A partir de hoy" y "Siempre". Incluye partir una serie, cerrar con `endDate` y conservar las excepciones | L | T2.1 | CG-07 a 15 |
+| T3.2 ✅ | **Deshacer** por instantánea del estado afectado, un solo paso, 8 segundos | S | T3.1 | CG-17 |
+| T3.3 ✅ | **Editor de eventos** (reemplaza `TaskEditor.tsx`): campos, validaciones, repetición con descripción en lenguaje natural ("Cada 2 semanas, el martes, desde el 03/11"), aviso de superposición | L | T3.1 | CG-01 a 06 |
+| T3.4 ✅ | **Hoja de alcance** con tres opciones, sin ninguna preseleccionada, con etiquetas dinámicas ("Solo el 24/11", "A partir del 24/11"), la opción "Solo hoy" oculta si cambió la regla y la línea "N días tienen cambios propios" | M | T3.3 | CG-10, CG-12 |
+| T3.5 ✅ | **Eliminar**: confirmación con cantidad de días y sesiones registradas, y bloqueo si hay una sesión en curso | M | T3.1 | CG-15, CG-16 |
+| T3.6 ✅ | **Cualquier fecha, incluido fin de semana**: la vista del día muestra sábados y domingos (hoy devuelve vacío) y permite crear con "+" | M | T2.1 | CG-01 |
+| T3.7 ✅ | **Efectos tras cada cambio**: reprogramar avisos y refrescar Agenda, Metas y Datos sin reabrir | S | T3.3, T2.4 | CG-30, CG-31 |
+
+**Estado de la fase 3 (17/11/2026).** Hecha en código, con 209 pruebas en verde (typecheck, lint y empaquetado para Android también pasan). Solo se activa con el motor v2 (el teléfono ya migró); con el formato viejo sigue el editor anterior.
+
+| Tarea | Dónde | Qué quedó |
+|---|---|---|
+| T3.1 | `src/domain/events.ts` | Crear, editar y eliminar con "Solo hoy", "A partir de hoy" y "Siempre" (criterios CG-01 a CG-15). "A partir de hoy" separa la serie, lleva las excepciones futuras a la nueva y suma la serie nueva a las metas asociadas. Eliminar "Siempre" desasocia de las metas y archiva una meta de tiempo que queda sin eventos |
+| T3.2 | `App.tsx` | "Deshacer" de un paso durante 8 segundos, con una barra sobre las pestañas |
+| T3.3 | `src/screens/EventEditor.tsx` | Editor nuevo: nombre, categoría (todas, incluida "Cierre del día"), día, inicio y fin con ±15, nota, repetición (no se repite, todos los días, días de la semana, cada N semanas), fin (nunca o una fecha), la regla en palabras y aviso de superposición |
+| T3.4 | `EventEditor.tsx` (`ScopeSheet`), `src/domain/describe.ts` | Hoja de alcance sin opción preseleccionada, con etiquetas dinámicas ("Solo el 24/11", "A partir del 24/11"), una explicación por opción, "Solo hoy" oculto si cambió la repetición y la línea de días con cambios propios |
+| T3.5 | `EventEditor.tsx` | Eliminar con hoja de alcance, días afectados (si se pueden contar) y sesiones registradas; bloqueado si hay una sesión en curso |
+| T3.6 | `AgendaScreen.tsx` | Semana de 7 días, crear y empezar cualquier día (también sábado y domingo), mensaje en días sin eventos y la app abre en el día de hoy aunque sea fin de semana |
+| T3.7 | `App.tsx` | Cada cambio reprograma los avisos y refresca Agenda, Metas y Datos |
+
+**Pruebas de pantalla:** se sumó React Native Testing Library 14.1 (la versión que pide la guía de Expo SDK 58, solo para desarrollo). `src/screens/__tests__/event-editor-test.tsx` dibuja el editor con un motor v2 real y recorre crear, la hoja de alcance, cambiar la repetición, eliminar, la sesión en curso y la superposición.
+
+**Pendientes de la fase 3, resueltos (17/11/2026, a pedido de Sofía):**
+- **Metas asociadas y aviso propio en el editor.** Se eligen entre las metas existentes (crear y editar metas sigue siendo de la fase 5). El aviso propio ("Como en Ajustes" o "Personalizado": al empezar y minutos antes del fin) pisa los ajustes generales solo para ese evento y llega al plan de avisos. El aviso y las metas son del evento, no de un día: con "A partir de hoy" quedan en la serie nueva.
+- **"+ Nueva categoría" desde el editor**: nombre (único, hasta 30 caracteres), color de la paleta cerrada y las tres propiedades ("Permite empezar y medir", "Es fija: nunca se mueve", "Evitar para recibir margen"). Queda elegida al crearla. La pantalla para administrar categorías sigue en la fase 4. Una categoría creada no se deshace si después se cancela el editor.
+- **Mover solo este día** de un evento que se repite: solo con "Solo hoy" y sin cambiar la repetición a la vez. Se guarda directo, sin hoja, porque hay un solo alcance posible.
+- **Botones de la semana:** con el modelo nuevo, las flechas pasaron a la línea del título (48 × 48 dp) y los 7 días ocupan todo el ancho, con 2 dp entre ellos: unos 45 dp de ancho en un teléfono de 360 dp (antes, 30) y 48 dp desde unos 384 dp de ancho. La altura sigue en 56 dp.
+- **Textos de la rutina original:** con el modelo nuevo ya no aparece la etiqueta del tipo de día ("Día completo", "Martes con adscripción"). El cierre del día dice "No quedan más eventos por hoy." en lugar de "Lo que no es fijo se cierra a las 18:00".
+- Etiquetas accesibles distintas para categorías y metas con el mismo nombre ("Categoría Ejercicio" y "Meta Ejercicio").
+
+Sigue pendiente de la rutina original: la tarjeta "Martes con adscripción" de Ajustes (fase 6).
 
 **Prueba en el teléfono (lista de verificación):**
 1. Crear un evento de sábado sin repetición.
@@ -170,9 +236,21 @@ Verificación: 45 pruebas pasan en cuatro zonas horarias (Argentina, UTC, Los Á
 
 | ID | Tarea | Tamaño | Depende de | Cubre |
 |---|---|---|---|---|
-| T4.1 | **Operaciones puras de categorías**: crear, editar, archivar, eliminar con reasignación, validar nombre único | M | T2.1 | CG-19, 20, 21 |
-| T4.2 | **Paleta cerrada de colores** con contraste verificado (nivel AA para texto sobre cada color) en modo claro y oscuro | S | nada | accesibilidad |
-| T4.3 | **Pantalla Ajustes → Categorías** y creación en línea desde el editor de eventos | M | T4.1, T4.2, T3.3 | CG-18 |
+| T4.1 ✅ | **Operaciones puras de categorías**: crear, editar, archivar, eliminar con reasignación, validar nombre único | M | T2.1 | CG-19, 20, 21 |
+| T4.2 ✅ | **Paleta cerrada de colores** con contraste verificado (nivel AA para texto sobre cada color) en modo claro y oscuro | S | nada | accesibilidad |
+| T4.3 ✅ | **Pantalla Ajustes → Categorías** y creación en línea desde el editor de eventos | M | T4.1, T4.2, T3.3 | CG-18 |
+
+**Estado de la fase 4 (17/11/2026).** Hecha en código, con 256 pruebas en verde (typecheck, lint y empaquetado para Android también pasan). Solo con el motor v2.
+
+| Tarea | Dónde | Qué quedó |
+|---|---|---|
+| T4.1 | `src/domain/categories.ts` | Editar (nombre único, color, propiedades), archivar y reactivar, y eliminar: si la usan eventos, solo pasándolos a otra categoría activa (se cambia en las series y en los cambios propios de cada día). No se puede archivar ni eliminar la última categoría activa. Uso = series más días con un cambio propio a esa categoría. Criterios CG-19 a CG-21 |
+| T4.2 | `src/__tests__/palette-test.ts` | Contraste de la paleta contra el fondo y la superficie, en modo claro y oscuro, con el criterio WCAG 1.4.11 (elementos no textuales, mínimo 3:1). Todos los colores cumplen; el más justo es el gris de "Pausa o comida" en modo claro, 3,08:1 contra el fondo. No hizo falta cambiar colores |
+| T4.3 | `src/screens/CategoriesScreen.tsx`, Ajustes | Tarjeta "Categorías" en Ajustes → pantalla con la lista (color, eventos que la usan, fija, archivada), crear, editar, archivar, reactivar y eliminar con reasignación. Cambiar el comportamiento de una categoría con eventos pide confirmación diciendo cuántos afecta. Todo con "Deshacer". La creación desde el editor de eventos ya estaba (fase 3) |
+
+**Notas:**
+- Un evento con una categoría archivada la conserva; en el editor esa categoría no aparece para elegir, y si no se cambia, se guarda igual.
+- El "Deshacer" de los cambios de categorías aparece al volver de la pantalla de categorías (la barra queda debajo de la pantalla mientras está abierta).
 
 **Prueba en el teléfono:** crear "Lectura" con "Permite empezar y medir", asignarla, verificar que ofrece Empezar y que el aviso trae "Empecé"; intentar eliminar una categoría en uso.
 
@@ -182,10 +260,24 @@ Verificación: 45 pruebas pasan en cuatro zonas horarias (Argentina, UTC, Los Á
 
 | ID | Tarea | Tamaño | Depende de | Cubre |
 |---|---|---|---|---|
-| T5.1 | **Operaciones puras de metas**: crear, editar con versiones ("A partir de hoy" y "Siempre"), archivar, eliminar, nombre único, meta de tiempo con evento asociado | M | T2.5 | CG-22 a 28 |
-| T5.2 | **Pantalla Metas**: lista con progreso, botón "+ Nueva meta", editor y hoja de alcance con aviso sobre porcentajes pasados | L | T5.1, T4.3 | CG-22 a 28 |
-| T5.3 | **Contadores dentro del evento en curso** (prioridad "Debería"): las metas asociadas aparecen con su botón + en la tarjeta del evento | M | T5.1 | CG-29 |
-| T5.4 | **Datos con metas archivadas y eliminadas**: sus conteos siguen visibles en Datos y en el CSV con el nombre que tenían | S | T5.1, T2.3 | CG-26, CG-27 |
+| T5.1 ✅ | **Operaciones puras de metas**: crear, editar con versiones ("A partir de hoy" y "Siempre"), archivar, eliminar, nombre único, meta de tiempo con evento asociado | M | T2.5 | CG-22 a 28 |
+| T5.2 ✅ | **Pantalla Metas**: lista con progreso, botón "+ Nueva meta", editor y hoja de alcance con aviso sobre porcentajes pasados | L | T5.1, T4.3 | CG-22 a 28 |
+| T5.3 ✅ | **Contadores dentro del evento en curso** (prioridad "Debería"): las metas asociadas aparecen con su botón + en la tarjeta del evento | M | T5.1 | CG-29 |
+| T5.4 ✅ | **Datos con metas archivadas y eliminadas**: sus conteos siguen visibles en Datos y en el CSV con el nombre que tenían | S | T5.1, T2.3 | CG-26, CG-27 |
+
+**Estado de la fase 5 (17/11/2026).** Hecha en código, con 274 pruebas en verde (typecheck, lint y empaquetado para Android también pasan). Solo con el motor v2.
+
+| Tarea | Dónde | Qué quedó |
+|---|---|---|
+| T5.1 | `src/domain/goals.ts` | Crear, editar, archivar, reactivar y eliminar metas. Validación: nombre único entre las activas, unidad para las de cantidad, objetivo mayor que cero o "sin objetivo", al menos un día, y las de tiempo (o cantidad y tiempo) con al menos un evento asociado. Cambiar objetivo, período o días pide alcance: "A partir de hoy" agrega una versión desde hoy; "Siempre" reescribe el historial. Criterios CG-22 a CG-28 |
+| T5.2 | `src/screens/GoalEditor.tsx`, `GoalsScreen.tsx` | En Metas, "Tus metas" con un resumen de cada una ("Cantidad · 5 comentarios por día · L M X V") y "+ Nueva meta". Editor con nombre, qué mide, unidad, objetivo, período, días, eventos asociados (con su repetición en palabras para distinguirlos), aviso propio a una hora, hoja de alcance con aviso sobre los porcentajes pasados, archivar y eliminar con confirmación |
+| T5.3 | `AgendaScreen.tsx` | Dentro del evento en curso (y del que toca ahora) aparecen las metas de cantidad asociadas, con su conteo y botones − y + |
+| T5.4 | `DataScreen.tsx` | Los conteos de cada sesión se muestran con el nombre de la meta (el actual, o el último guardado en el registro si se eliminó) y, en las de cantidad y tiempo, "N en M min" (CG-29). La semana de Datos tiene 7 días con el modelo nuevo |
+
+**También:**
+- Avisos propios de las metas: a la hora elegida, los días en que aplica ("Meta: Páginas leídas · Mira cómo vas hoy.").
+- Totales de la semana: las metas de cantidad y tiempo suman también en cantidad, y las metas de tiempo nuevas suman minutos de sesiones confirmadas. "Proyecto" y "Ejercicio" conservan su cálculo (decisión 3).
+- **Diferencia con la fase 2:** el sábado y el domingo ya no muestran las metas de un día común; muestran las que aplican ese día (las migradas son de lunes a viernes).
 
 **Prueba en el teléfono:** crear una meta de cantidad ("Páginas leídas", 20 por día) y una de cantidad y tiempo asociada a un evento; sumar conteos; cambiar el objetivo con cada alcance y mirar un día pasado; archivar y eliminar.
 
@@ -195,14 +287,25 @@ Verificación: 45 pruebas pasan en cuatro zonas horarias (Argentina, UTC, Los Á
 
 | ID | Tarea | Tamaño | Depende de | Cubre |
 |---|---|---|---|---|
-| T6.1 | **Reemplazar "Restaurar agenda original"** por "Restaurar la plantilla inicial" y "Borrar toda la agenda" (spec 009, 7.4). Ninguna toca el registro | S | T1.6 | spec 009 §7.4 |
-| T6.2 | **Limpieza**: borrar `DayType`, `Cat`, `G_*`, `GOAL_LABELS`, el adaptador de la fase 1 y los textos de búsqueda de empleo que queden en el código | M | todas | CA, CG |
-| T6.3 | **Revisión de accesibilidad**: controles de 48 dp o más, hoja de alcance legible con lectores de pantalla y texto grande, mensajes de error junto al campo | M | T3.4, T5.2 | spec 009 §7.3 |
-| T6.4 | **Textos en claves** para poder traducir después, sin traducir todavía | M | T6.2 | principio 8 de la constitución |
+| T6.1 ✅ | **Reemplazar "Restaurar agenda original"** por "Restaurar la plantilla inicial" y "Borrar toda la agenda" (spec 009, 7.4). Ninguna toca el registro | S | T1.6 | spec 009 §7.4 |
+| T6.2 ✅ | **Limpieza**: borrar `DayType`, `Cat`, `G_*`, `GOAL_LABELS`, el adaptador de la fase 1 y los textos de búsqueda de empleo que queden en el código | M | todas | CA, CG |
+| T6.3 ✅ | **Revisión de accesibilidad**: controles de 48 dp o más, hoja de alcance legible con lectores de pantalla y texto grande, mensajes de error junto al campo | M | T3.4, T5.2 | spec 009 §7.3 |
+| T6.4 ✅ | **Textos en claves** para poder traducir después, sin traducir todavía | M | T6.2 | principio 8 de la constitución |
 | T6.5 | **Publicación**: se agrega solo JavaScript, así que alcanza con una actualización por internet para la versión 1.1.0, siempre que no se sumen librerías con código nativo. Se agrega una nota en `INSTALAR.md` | S | todas | entrega |
 | T6.6 | **Pasada final** sobre todos los criterios CA y CG con la lista de verificación del teléfono | M | todas | cierre |
 
 ---
+
+**Estado de la fase 6 (17/11/2026).** 220 pruebas en verde después de borrar el código viejo y sus pruebas (typecheck, lint y empaquetado para Android también pasan).
+
+| Tarea | Estado | Qué quedó |
+|---|---|---|
+| T6.1 | ✅ | Con el modelo nuevo, Ajustes → Agenda tiene "Restaurar la plantilla inicial" (vuelve la rutina original con sus ids de siempre, quita los cambios de un día, conserva categorías y metas y repone las categorías iniciales que se hubieran eliminado) y "Borrar toda la agenda" (quita eventos, categorías y metas; queda una categoría "General" para poder seguir). Las dos piden confirmación, tienen "Deshacer" y no tocan el registro. |
+| T6.2 | ✅ | Se borró el código de la versión vieja: motor v1, `schedule.ts`, `TaskEditor`, la rutina escrita en `agenda.ts`, `DayType`, `Cat`, `G_*`, `GOAL_LABELS`, la migración (`src/migration/`), el adaptador de equivalencia y sus pruebas, las funciones de `store.ts` para la agenda vieja (`agenda:sched`, `agenda:ovr:*`, `agenda:settings`) y los textos de esas tarjetas. **Consecuencias:** la app ya no puede leer datos del formato viejo (el teléfono de Sofía ya está migrado; las claves viejas quedan guardadas sin uso y siguen entrando en la copia de seguridad). En una instalación nueva se arma la agenda con la plantilla inicial (`src/data/init.ts`), con la alternancia de los martes desde la semana de la instalación. Si los datos guardados están dañados, la app no arranca con otro formato: muestra una pantalla con "Exportar copia de seguridad" y "Empezar con la plantilla inicial" (que no toca el registro ni los ajustes). La fixture de pruebas pasó a ser el almacén ya migrado (`src/__fixtures__/v2-store.json`). 220 pruebas en verde |
+| T6.3 | ✅ | Pastillas de al menos 48 × 48 dp (antes 44 de alto). Prueba automática (`accessibility-test.tsx`) que recorre Agenda, Metas, Categorías y los dos editores y falla si algún elemento tocable no tiene nombre para lectores de pantalla (con una prueba de control que comprueba que el revisor detecta uno sin nombre). Las hojas de alcance ya eran legibles con lector de pantalla (cada opción tiene nombre y explicación) |
+| T6.4 | ✅ | Todos los textos de la interfaz pasaron a `src/i18n/es.ts` (unas 490 líneas, por secciones: fechas, repetición y alcances, avisos, migración, Agenda, editor de eventos, categorías, metas, Datos, Timer, margen y Ajustes). Las pantallas usan `S.<sección>.<clave>`; los textos con datos son funciones, así cada idioma decide el orden y los plurales. Para traducir: crear otro archivo con el tipo `Strings` (TypeScript avisa si falta una clave) y elegirlo en `src/i18n/index.ts`. Los nombres de días y meses de `agenda.ts` también salen del diccionario. Una prueba (`no-hardcoded-text-test.ts`) falla si vuelve a aparecer texto en español escrito directo en una pantalla. Fuera del alcance: el contenido de la rutina (títulos y notas de la plantilla, que son datos). Sin cambios visibles: los textos son los mismos y las 301 pruebas pasan |
+| T6.5 | ✅ | Publicada el 17/11 como actualización por internet sobre la versión 1.1.0 (sin APK nuevo). Nota en `INSTALAR.md` |
+| T6.6 | En curso | Lista de verificación del teléfono en `INSTALAR.md` → "Fase 6" (25 pasos con los criterios CG/CA que solo se pueden ver en el teléfono; el resto lo cubren las pruebas automáticas) |
 
 ## 4. Orden recomendado de entregas
 
@@ -239,4 +342,6 @@ E1 y E2 no agregan funciones nuevas visibles, pero son las que más riesgo reduc
 
 ## 7. Fuera de este plan
 
-Navegación Hoy / Semana / Ajustes, migración a Expo Router, repetición mensual, eventos que cruzan la medianoche, sincronización con calendarios y nube, IA, iOS, traducción de los textos, y la importación de plantillas de otras personas.
+**Hecho después del plan:** repetición mensual (17/11/2026; ver spec 010, 3.2). 237 pruebas en verde.
+
+Navegación Hoy / Semana / Ajustes, migración a Expo Router, eventos que cruzan la medianoche, sincronización con calendarios y nube, IA, iOS, traducción de los textos, y la importación de plantillas de otras personas.

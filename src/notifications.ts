@@ -2,9 +2,12 @@
 /* eslint-disable import/namespace */
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { addDays, hm, iso, startOfDayMs } from './agenda';
-import { blocksFor } from './schedule';
-import type { Settings, TimerState } from './store';
+import { addDays, iso, startOfDayMs } from './agenda';
+import type { AgendaEngine } from './engine/types';
+import { S } from './i18n';
+import { ReminderDay, planGoalReminders, planReminders } from './reminders';
+import type { SettingsV2 } from './domain/types';
+import type { TimerState } from './store';
 
 export const CH_AGENDA = 'agenda';
 export const CH_TIMER = 'timer';
@@ -26,20 +29,20 @@ Notifications.setNotificationHandler({
 export async function setupChannels() {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(CH_AGENDA, {
-    name: 'Bloques de la agenda',
+    name: S.reminders.channelAgenda,
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 200, 250],
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
   });
   await Notifications.setNotificationChannelAsync(CH_TIMER, {
-    name: 'Timer',
+    name: S.reminders.channelTimer,
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 400, 200, 400, 200, 400],
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
   });
   // Botón "Empecé" en el aviso de inicio de cada bloque. Abre la app para registrar la hora exacta.
   await Notifications.setNotificationCategoryAsync(CATEGORY_BLOCK, [
-    { identifier: START_ACTION, buttonTitle: 'Empecé', options: { opensAppToForeground: true } },
+    { identifier: START_ACTION, buttonTitle: S.reminders.startAction, options: { opensAppToForeground: true } },
   ]);
 }
 
@@ -135,7 +138,7 @@ export async function scheduleTimerAlert(t: TimerState) {
     if (t.endAt <= Date.now()) return;
     const exact = await exactAlarmsGranted();
     await Notifications.scheduleNotificationAsync(
-      dateReq(TIMER_ID, t.endAt, 'Terminó el timer', t.label || 'Enfoque', CH_TIMER, exact),
+      dateReq(TIMER_ID, t.endAt, S.reminders.timerTitle, t.label || S.reminders.timerDefault, CH_TIMER, exact),
     );
   } catch {}
 }
@@ -150,50 +153,81 @@ export async function scheduleTest() {
   try {
     const exact = await exactAlarmsGranted();
     await Notifications.scheduleNotificationAsync(
-      dateReq('test', Date.now() + 5000, 'Aviso de prueba', 'Así van a verse y sonar tus avisos.', CH_AGENDA, exact),
+      dateReq('test', Date.now() + 5000, S.reminders.testTitle, S.reminders.testBody, CH_AGENDA, exact),
     );
   } catch {}
 }
 
 let chain: Promise<unknown> = Promise.resolve();
 
+/** Resultado del último reprogramado de avisos (para Ajustes y la prueba del tope, T2.6). */
+export interface ScheduleReport {
+  at: number;
+  /** Avisos que se intentaron programar. */
+  planned: number;
+  /** Avisos programados sin error. */
+  ok: number;
+  /** Primer error, si hubo. */
+  error: string | null;
+  /** `true` mientras se está reprogramando. */
+  running: boolean;
+}
+let lastReport: ScheduleReport | null = null;
+export const getScheduleReport = () => lastReport;
+
 /** Reprograma los avisos de los próximos 14 días. Se llama al abrir la app y al cambiar ajustes. */
-export function rescheduleAgenda(s: Settings, timer: TimerState): Promise<void> {
+export function rescheduleAgenda(engine: AgendaEngine, s: SettingsV2, timer: TimerState): Promise<void> {
   const run = async () => {
+    lastReport = { at: Date.now(), planned: 0, ok: 0, error: null, running: true };
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
       const exact = await exactAlarmsGranted();
       const now = Date.now();
-      const reqs: Notifications.NotificationRequestInput[] = [];
       const today = new Date();
+      const days: ReminderDay[] = [];
+      const starts = new Map<string, number>();
       for (let i = 0; i < WINDOW_DAYS; i++) {
         const d = addDays(today, i);
-        const blocks = blocksFor(d, s.anchor);
-        if (!blocks) continue;
-        const base = startOfDayMs(d);
-        blocks.forEach((b, j) => {
-          if (s.muted[b.id]) return;
-          if (s.notifStart) {
-            const at = base + b.s * 60000;
-            const extra = b.c === 'fixed' || b.c === 'rest' ? undefined : { categoryIdentifier: CATEGORY_BLOCK, data: { bid: b.id, day: iso(d) } };
-            if (at > now) reqs.push(dateReq(`ag:${iso(d)}:s${j}`, at, `${hm(b.s)} · ${b.t}`, b.n || `Hasta las ${hm(b.e)}`, CH_AGENDA, exact, extra));
-          }
-          if (s.endLead > 0 && b.e - b.s >= 30) {
-            const at = base + (b.e - s.endLead) * 60000;
-            if (at > now) reqs.push(dateReq(`ag:${iso(d)}:e${j}`, at, `Quedan ${s.endLead} min: ${b.t}`, `Termina a las ${hm(b.e)}`, CH_AGENDA, exact));
-          }
-        });
+        starts.set(iso(d), startOfDayMs(d));
+        const blocks = engine.blocksFor(iso(d));
+        if (blocks && blocks.length) days.push({ date: iso(d), dayStartMs: startOfDayMs(d), blocks });
+      }
+      const reqs: Notifications.NotificationRequestInput[] = planReminders(days, s, (c) => engine.category(c).tracked, now).map((r) =>
+        dateReq(r.id, r.at, r.title, r.body, CH_AGENDA, exact, r.start ? { categoryIdentifier: CATEGORY_BLOCK, data: r.start } : undefined),
+      );
+      // Avisos propios de las metas (fase 5).
+      const goalItems = engine.events?.goalReminders([...starts.keys()]) ?? [];
+      for (const r of planGoalReminders(goalItems, (date) => starts.get(date)!, now)) {
+        reqs.push(dateReq(r.id, r.at, r.title, r.body, CH_AGENDA, exact));
       }
       const renewAt = startOfDayMs(addDays(today, WINDOW_DAYS - 1)) + 9 * 3600000;
       if (renewAt > now) {
-        reqs.push(dateReq('renew', renewAt, 'Abre la app', 'Ábrela para renovar los avisos de las próximas dos semanas.', CH_AGENDA, exact));
+        reqs.push(dateReq('renew', renewAt, S.reminders.renewTitle, S.reminders.renewBody, CH_AGENDA, exact));
       }
+      // Un aviso que falla no corta los demás: se programan todos y se guarda el primer error.
+      lastReport = { ...lastReport!, planned: reqs.length };
       for (let k = 0; k < reqs.length; k += 20) {
-        await Promise.all(reqs.slice(k, k + 20).map((r) => Notifications.scheduleNotificationAsync(r)));
+        const res = await Promise.allSettled(reqs.slice(k, k + 20).map((r) => Notifications.scheduleNotificationAsync(r)));
+        for (const x of res) {
+          if (x.status === 'fulfilled') lastReport.ok++;
+          else if (!lastReport.error) lastReport.error = x.reason instanceof Error ? x.reason.message : String(x.reason);
+        }
       }
       if (timer.endAt > now) await scheduleTimerAlert(timer);
-    } catch {}
+    } catch (e) {
+      if (lastReport && !lastReport.error) lastReport.error = e instanceof Error ? e.message : String(e);
+    }
+    if (lastReport) lastReport = { ...lastReport, running: false };
   };
   chain = chain.then(run, run);
   return chain as Promise<void>;
+}
+
+/** Cantidad de avisos programados en el teléfono (para la prueba del tope de avisos, T2.6). `null` si no se puede leer. */
+export async function countScheduled(): Promise<number | null> {
+  try {
+    return (await Notifications.getAllScheduledNotificationsAsync()).length;
+  } catch {
+    return null;
+  }
 }

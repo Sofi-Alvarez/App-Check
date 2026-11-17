@@ -1,67 +1,39 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { GOAL_LABELS, addDays, dayType, goalsFor, iso, mondayOf, parseISO } from '../agenda';
+import { parseISO } from '../agenda';
 import type { Ctx } from '../ctx';
-import { blocksFor } from '../schedule';
-import { loadDay } from '../store';
-import { Bar, Card, Label, MONO } from '../ui';
+import type { GoalView } from '../engine/types';
+import { Bar, Btn, Card, Label, MONO } from '../ui';
+import { GoalEditor } from './GoalEditor';
+import { S } from '../i18n';
 
-interface Row { label: string; value: number; target: number | null; unit: string }
+const G = S.goal;
 
-function weekRows(viewIso: string, anchor: string): Row[] {
-  const mon = mondayOf(parseISO(viewIso));
-  const keys = ['post', 'com', 'rea', 'cold', 'fol', 'apl'];
-  const sums: Record<string, { c: number; t: number; hasT: boolean }> = {};
-  keys.forEach((k) => (sums[k] = { c: 0, t: 0, hasT: false }));
-  let projDone = 0, projTotal = 0, exDone = 0, exTotal = 0;
-  for (let i = 0; i < 5; i++) {
-    const d = addDays(mon, i);
-    const type = dayType(d, anchor);
-    const blocks = blocksFor(d, anchor) ?? [];
-    const data = loadDay(iso(d));
-    goalsFor(type).forEach((g) => {
-      if (g.target != null) {
-        sums[g.key].t += g.target;
-        sums[g.key].hasT = true;
-      }
-    });
-    Object.entries(data.counts).forEach(([k, v]) => {
-      if (sums[k]) sums[k].c += v;
-    });
-    blocks.forEach((b) => {
-      const dur = b.e - b.s;
-      if (b.c === 'project') {
-        projTotal += dur;
-        if (data.done[b.id]) projDone += dur;
-      }
-      if (b.c === 'health') {
-        exTotal += 1;
-        if (data.done[b.id]) exDone += 1;
-      }
-    });
-  }
-  const rows: Row[] = keys.map((k) => ({
-    label: GOAL_LABELS[k], value: sums[k].c, target: sums[k].hasT ? sums[k].t : null, unit: '',
-  }));
-  rows.push({ label: 'Proyecto', value: Math.round(projDone / 6) / 10, target: Math.round(projTotal / 6) / 10, unit: ' h' });
-  rows.push({ label: 'Ejercicio', value: exDone, target: exTotal, unit: ' sesiones' });
-  return rows;
+const DAY_INITIALS = S.dates.initials;
+/** "Cantidad · 5 comentarios por día · L M X V" */
+function goalSummary(g: GoalView): string {
+  const v = g.version;
+  const kind = G.kinds[g.kind];
+  const what = v.target == null ? G.summaryNoTarget : G.summaryTarget(v.target, g.kind === 'time' ? G.minutesUnit : g.unit);
+  const days = [1, 2, 3, 4, 5, 6, 0].filter((d) => v.activeDays.includes(d)).map((d) => DAY_INITIALS[d]).join(' ');
+  return G.summary(kind, what, v.period === 'day', days);
 }
 
 export function GoalsScreen({ c }: { c: Ctx }) {
-  const { theme: t, settings, viewIso, day } = c;
+  const { theme: t, viewIso, day } = c;
+  const [editing, setEditing] = useState<{ id: string | null } | null>(null);
+  const all = c.engine.events.goalsAll();
   const d = parseISO(viewIso);
-  const type = dayType(d, settings.anchor);
-  const goals = goalsFor(type);
+  const goals = c.engine.goalsFor(viewIso);
   // `c.rev` fuerza a releer el almacenamiento tras cada cambio.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const rows = useMemo(() => weekRows(viewIso, settings.anchor), [viewIso, settings.anchor, c.rev]);
+  const rows = useMemo(() => c.engine.weekSummary(viewIso), [c.engine, viewIso, c.rev]);
 
   return (
     <ScrollView contentContainerStyle={[s.content, { paddingTop: c.insets.top + 12 }]} showsVerticalScrollIndicator={false}>
-      <Text style={[s.h1, { color: t.fg }]}>Metas</Text>
+      <Text style={[s.h1, { color: t.fg }]}>{G.screenTitle}</Text>
       <Text style={[s.sub, { color: t.muted }]}>
-        Día que estás viendo: {d.getDate()}/{d.getMonth() + 1}. Cambia de día en la pestaña Agenda.
+        {G.viewing(d.getDate(), d.getMonth() + 1)}
       </Text>
 
       <View style={s.grid}>
@@ -77,14 +49,14 @@ export function GoalsScreen({ c }: { c: Ctx }) {
               </View>
               <View style={s.step}>
                 <Pressable
-                  accessibilityLabel={`Restar ${g.label}`}
+                  accessibilityLabel={G.subtract(g.label)}
                   onPress={() => c.changeCount(g.key, -1)}
                   style={[s.stepBtn, { backgroundColor: t.surface2 }]}
                 >
                   <Text style={[s.stepText, { color: t.fg }]}>−</Text>
                 </Pressable>
                 <Pressable
-                  accessibilityLabel={`Sumar ${g.label}`}
+                  accessibilityLabel={G.add(g.label)}
                   onPress={() => c.changeCount(g.key, 1)}
                   style={[s.stepBtn, { backgroundColor: t.surface2 }]}
                 >
@@ -97,7 +69,7 @@ export function GoalsScreen({ c }: { c: Ctx }) {
       </View>
 
       <Card t={t} style={{ gap: 14 }}>
-        <Label t={t}>Totales de la semana</Label>
+        <Label t={t}>{G.weekTotals}</Label>
         {rows.map((r) => {
           const pct = r.target ? Math.min(100, Math.round((r.value / r.target) * 100)) : 0;
           return (
@@ -115,6 +87,22 @@ export function GoalsScreen({ c }: { c: Ctx }) {
           );
         })}
       </Card>
+
+      <Card t={t} style={{ gap: 10 }}>
+        <Label t={t}>{G.yours}</Label>
+        {all.length === 0 ? <Text style={[s.sub, { color: t.muted }]}>{G.none}</Text> : null}
+        {[...all.filter((g) => !g.archived), ...all.filter((g) => g.archived)].map((g) => (
+          <Pressable
+            key={g.id} accessibilityRole="button" accessibilityLabel={G.editA11y(g.name)} onPress={() => setEditing({ id: g.id })}
+            style={[s.item, { borderColor: t.line, opacity: g.archived ? 0.6 : 1 }]}
+          >
+            <Text style={[s.wLabel, { color: t.fg, fontWeight: '700' }]}>{g.name}{g.archived ? G.archivedTag : ''}</Text>
+            <Text style={[s.sub, { color: t.muted }]}>{goalSummary(g)}</Text>
+          </Pressable>
+        ))}
+        <Btn t={t} label={G.newButton} onPress={() => setEditing({ id: null })} />
+      </Card>
+      <GoalEditor c={c} target={editing} onClose={() => setEditing(null)} />
     </ScrollView>
   );
 }
@@ -134,5 +122,6 @@ const s = StyleSheet.create({
   stepText: { fontSize: 24, fontWeight: '700', lineHeight: 28 },
   wTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   wLabel: { fontSize: 15 },
+  item: { minHeight: 56, borderWidth: 1, borderRadius: 12, padding: 12, gap: 2 },
   wVal: { fontFamily: MONO, fontSize: 14, fontVariant: ['tabular-nums'] },
 });

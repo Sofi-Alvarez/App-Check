@@ -4,14 +4,12 @@ import { DIAS, MESES, hm, iso, mondayOf, addDays, parseISO } from '../agenda';
 import type { Ctx } from '../ctx';
 import { Session, buildSessions, eventsToCsv, minutesLabel } from '../sessions';
 import { loadAllLog } from '../store';
+import { S } from '../i18n';
 import { Btn, Card, Label, MONO } from '../ui';
 
-const ENDED: Record<Session['endedBy'], string> = {
-  manual: 'Terminada',
-  next: 'Cerrada al empezar otra',
-  auto_close: 'Cerrada sola (no cuenta)',
-  open: 'En curso',
-};
+const D = S.data;
+
+const ENDED: Record<Session['endedBy'], string> = S.data.ended;
 
 export function DataScreen({ c }: { c: Ctx }) {
   const { theme: t, viewIso } = c;
@@ -22,43 +20,60 @@ export function DataScreen({ c }: { c: Ctx }) {
   const { sessions, loose } = useMemo(() => buildSessions(events, nowMs), [events, nowMs]);
 
   const mon = mondayOf(parseISO(viewIso));
-  const days = [0, 1, 2, 3, 4].map((i) => iso(addDays(mon, i)));
+  const days = [0, 1, 2, 3, 4, 5, 6].map((i) => iso(addDays(mon, i)));
+
+  // Nombre de cada meta en los conteos (T5.4): el actual si la meta existe; si no (eliminada), el último nombre que
+  // quedó guardado en el registro; si tampoco, el id.
+  const savedNames = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const e of events) if (e.goal && e.goalName) m[e.goal] = e.goalName;
+    return m;
+  }, [events]);
+  const kinds = useMemo(
+    () => Object.fromEntries(c.engine.events.goalsAll().map((g) => [g.id, g.kind])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `c.rev` relee las metas después de un cambio
+    [c.engine, c.rev],
+  );
+  const goalLabel = (k: string) => {
+    const current = c.engine.goalName(k);
+    return current !== k ? current : savedNames[k] ?? k;
+  };
   const week = sessions.filter((x) => days.includes(x.day));
   const valid = week.filter((x) => x.endedBy !== 'auto_close' && x.endedBy !== 'open');
   const totalMs = valid.reduce((a, x) => a + x.activeMs, 0);
 
   const exportCsv = async () => {
     try {
-      await Share.share({ title: 'Datos de la agenda', message: eventsToCsv(loadAllLog()) });
+      await Share.share({ title: D.shareTitle, message: eventsToCsv(loadAllLog()) });
     } catch {}
   };
 
   return (
     <ScrollView contentContainerStyle={[s.content, { paddingTop: c.insets.top + 12 }]} showsVerticalScrollIndicator={false}>
-      <Text style={[s.h1, { color: t.fg }]}>Datos</Text>
+      <Text style={[s.h1, { color: t.fg }]}>{D.title}</Text>
       <Text style={[s.sub, { color: t.muted }]}>
-        Semana del {mon.getDate()} de {MESES[mon.getMonth()]}. Cambia de semana en la pestaña Agenda.
+        {D.week(mon.getDate(), MESES[mon.getMonth()])}
       </Text>
 
       <Card t={t}>
-        <Label t={t}>Resumen de la semana</Label>
+        <Label t={t}>{D.summary}</Label>
         <View style={s.sum}>
           <View style={s.sumItem}>
             <Text style={[s.big, { color: t.fg }]}>{week.length}</Text>
-            <Text style={[s.sumLabel, { color: t.muted }]}>sesiones</Text>
+            <Text style={[s.sumLabel, { color: t.muted }]}>{D.sessions}</Text>
           </View>
           <View style={s.sumItem}>
             <Text style={[s.big, { color: t.fg }]}>{minutesLabel(totalMs)}</Text>
-            <Text style={[s.sumLabel, { color: t.muted }]}>de trabajo real</Text>
+            <Text style={[s.sumLabel, { color: t.muted }]}>{D.realWork}</Text>
           </View>
         </View>
         <Text style={[s.note, { color: t.muted }]}>
-          {events.length} registros guardados en total. Solo cuentan las sesiones que tocaste con Empezar.
+          {D.savedTotal(events.length)}
         </Text>
-        <Btn t={t} label="Exportar todos los datos (CSV)" onPress={exportCsv} disabled={events.length === 0} />
+        <Btn t={t} label={D.exportCsv} onPress={exportCsv} disabled={events.length === 0} />
         {loose.length > 0 ? (
           <Text style={[s.note, { color: t.muted }]}>
-            {loose.length} toques de contador sin ninguna sesión abierta. Se exportan igual.
+            {D.loose(loose.length)}
           </Text>
         ) : null}
       </Card>
@@ -70,7 +85,7 @@ export function DataScreen({ c }: { c: Ctx }) {
           <View key={day} style={{ gap: 8 }}>
             <Label t={t}>{DIAS[d.getDay()]} {d.getDate()}</Label>
             {list.length === 0 ? (
-              <Text style={[s.note, { color: t.muted }]}>Sin sesiones registradas.</Text>
+              <Text style={[s.note, { color: t.muted }]}>{D.noSessions}</Text>
             ) : (
               list.map((x) => {
                 const planMin = x.planS >= 0 ? x.planE - x.planS : null;
@@ -81,15 +96,17 @@ export function DataScreen({ c }: { c: Ctx }) {
                     <Text style={[s.rowTitle, { color: t.fg }]}>{x.title}</Text>
                     <Text style={[s.mono, { color: t.muted }]}>
                       {new Date(x.startTs).toTimeString().slice(0, 5)}
-                      {x.endTs ? ` a ${new Date(x.endTs).toTimeString().slice(0, 5)}` : ''}
-                      {x.planS >= 0 ? `  ·  plan ${hm(x.planS)} a ${hm(x.planE)}` : ''}
+                      {x.endTs ? D.to(new Date(x.endTs).toTimeString().slice(0, 5)) : ''}
+                      {x.planS >= 0 ? D.plan(hm(x.planS), hm(x.planE)) : ''}
                     </Text>
                     <Text style={[s.note, { color: t.fg }]}>
-                      {realMin} min reales{planMin != null ? ` de ${planMin} planificados` : ''}
-                      {x.pausedMs > 0 ? `, ${Math.round(x.pausedMs / 60000)} min en pausa` : ''}
+                      {D.realMinutes(realMin)}{planMin != null ? D.ofPlanned(planMin) : ''}
+                      {x.pausedMs > 0 ? D.paused(Math.round(x.pausedMs / 60000)) : ''}
                     </Text>
                     {counts.length > 0 ? (
-                      <Text style={[s.note, { color: t.fg }]}>{counts.map(([k, v]) => `${k}: ${v}`).join('  ·  ')}</Text>
+                      <Text style={[s.note, { color: t.fg }]}>
+                        {counts.map(([k, v]) => `${goalLabel(k)}: ${v}${kinds[k] === 'both' && x.endedBy !== 'open' ? D.countIn(realMin) : ''}`).join('  ·  ')}
+                      </Text>
                     ) : null}
                     <Text style={[s.note, { color: x.endedBy === 'auto_close' ? t.warn : t.muted }]}>{ENDED[x.endedBy]}</Text>
                   </Card>
