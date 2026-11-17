@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, AppState, Linking, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, AppState, Linking, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
 import { MESES, addDays, dayType, iso, parseISO } from '../agenda';
 import type { Ctx } from '../ctx';
+import { buildBackupParts, parseBackupParts, sizeLabel } from '../domain/backup';
 import { askExactAlarms, askNotifications, exactAlarmsGranted, notificationsGranted, scheduleTest } from '../notifications';
+import { loadAllEntries } from '../store';
 import { Btn, Card, Label, Pill } from '../ui';
 
 const fmtDate = (d: Date) => `${d.getDate()} de ${MESES[d.getMonth()]}`;
@@ -21,6 +23,47 @@ export function SettingsScreen({ c }: { c: Ctx }) {
   const { theme: t, settings } = c;
   const [perm, setPerm] = useState({ notif: false, exact: false });
   const [tested, setTested] = useState(false);
+  const [backupMsg, setBackupMsg] = useState('');
+
+  // Copia de seguridad completa (agenda editada, marcas de hecho, conteos, registro y ajustes).
+  // Se arma, se verifica contra sí misma y recién entonces se comparte; si algo no cuadra, no se comparte nada.
+  const exportBackup = async () => {
+    const entries = loadAllEntries();
+    if (!entries) {
+      setBackupMsg('No se pudo leer el almacenamiento de la app. No se generó ninguna copia.');
+      return;
+    }
+    if (entries.length === 0) {
+      setBackupMsg('No hay datos guardados todavía.');
+      return;
+    }
+    const parts = buildBackupParts(entries, new Date());
+    const check = parseBackupParts(parts);
+    if (!check.ok || check.entries.length !== entries.length) {
+      setBackupMsg('La copia no pasó la verificación y no se compartió. Avísale a quien mantiene la app.');
+      return;
+    }
+    const label = `${entries.length} claves, ${sizeLabel(parts)}`;
+    let sent = 0;
+    try {
+      for (let i = 0; i < parts.length; i++) {
+        const r = await Share.share({
+          title: `Copia de seguridad de la agenda (${i + 1} de ${parts.length})`,
+          message: parts[i],
+        });
+        if (r.action === Share.dismissedAction) break;
+        sent++;
+      }
+    } catch {
+      setBackupMsg(`Se compartieron ${sent} de ${parts.length} partes. Vuelve a intentarlo y guarda todas.`);
+      return;
+    }
+    setBackupMsg(
+      sent === parts.length
+        ? `Copia lista: ${label}, en ${parts.length} ${parts.length === 1 ? 'parte' : 'partes'}. Guárdala fuera del teléfono.`
+        : `Se compartieron ${sent} de ${parts.length} partes. La copia está incompleta: vuelve a intentarlo y guarda todas.`,
+    );
+  };
 
   const refresh = useCallback(async () => {
     setPerm({ notif: await notificationsGranted(), exact: await exactAlarmsGranted() });
@@ -145,6 +188,19 @@ export function SettingsScreen({ c }: { c: Ctx }) {
           <Pill t={t} label="− 1 semana" onPress={() => shiftAnchor(-7)} />
           <Pill t={t} label="+ 1 semana" onPress={() => shiftAnchor(7)} />
         </View>
+      </Card>
+
+      <Card t={t}>
+        <Label t={t}>Copia de seguridad</Label>
+        <Text style={[s.note, { color: t.muted }]}>
+          Guarda todo lo de la app: la agenda con tus ediciones, lo hecho, los conteos, el registro de sesiones y los ajustes. Compártela a tu correo o a Drive. Si desinstalas la app, sin esta copia se pierde todo.
+        </Text>
+        <Btn t={t} label="Exportar copia de seguridad" onPress={exportBackup} />
+        {backupMsg ? (
+          <Text accessibilityLiveRegion="polite" style={[s.note, { color: t.fg }]}>
+            {backupMsg}
+          </Text>
+        ) : null}
       </Card>
 
       <Card t={t}>

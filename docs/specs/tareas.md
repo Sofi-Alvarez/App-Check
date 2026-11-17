@@ -22,7 +22,9 @@ Los plazos son estimaciones gruesas por tamaño (S, M, L), no fechas. Sirven par
 | **A. En la misma app** (migración en el lugar) | Un solo producto y se conserva el historial automáticamente | Si la migración falla en tu teléfono, afecta los datos reales. Se mitiga con la copia de seguridad (T0.1) |
 | **B. App nueva al lado** (importar desde una copia) | La actual sigue intacta como respaldo | Hay que mantener dos apps un tiempo y construir una importación |
 
-**Recomendación:** A, pero solo después de exportar la copia de seguridad (T0.1) y de terminar tu semana de pruebas de datos. Si todavía estás juntando datos en la app actual, B es más seguro. **Decisión pendiente tuya.**
+**Recomendación:** A, pero solo después de exportar la copia de seguridad (T0.1) y de terminar tu semana de pruebas de datos. Si todavía estás juntando datos en la app actual, B es más seguro.
+
+**Decisión (17/11/2026): A, migrar en la misma app.** Condición que se mantiene: no se publica ninguna migración (fase 1) antes de tener la copia de seguridad de T0.1 guardada fuera del teléfono.
 
 ### D2. Tope de avisos
 
@@ -54,10 +56,12 @@ Las fases 4 y 5 se pueden hacer en cualquier orden entre sí una vez terminada l
 
 | ID | Tarea | Tamaño | Depende de | Cubre |
 |---|---|---|---|---|
-| T0.1 | **Exportar copia de seguridad completa** (JSON con todas las claves del almacén) desde Ajustes, además del CSV de uso. Hoy el CSV solo tiene el registro de uso, no la agenda editada ni las marcas de hecho. Se publica por actualización por internet *antes* de cualquier migración | S | nada | seguridad de CA-18 |
+| T0.1 ✅ en código | **Exportar copia de seguridad completa** (JSON con todas las claves del almacén) desde Ajustes, además del CSV de uso. Hoy el CSV solo tiene el registro de uso, no la agenda editada ni las marcas de hecho. Se publica por actualización por internet *antes* de cualquier migración | S | nada | seguridad de CA-18 |
 | T0.2 | **Infraestructura de pruebas.** Instalar el corredor de pruebas con `npx expo install` (según la versión de Expo, confirmar en la documentación de SDK 58 antes) y agregar el script `test`. Solo dependencias de desarrollo: no hace falta un APK nuevo | S | nada | base de todos los CA y CG |
 | T0.3 | **Script `typecheck`** en `package.json` (`tsc --noEmit`) y un flujo en GitHub Actions que corra typecheck, lint y pruebas en cada push | S | T0.2 | calidad |
 | T0.4 | **Datos de prueba.** Fixtures sintéticas generadas desde `defaultBlocks()` y un registro de uso de ejemplo. No se suben datos reales de personas ni notas privadas al repositorio | S | T0.2 | CA-16, CA-19 |
+
+**Estado de T0.1 (17/11/2026).** Implementada en `src/domain/backup.ts` (partes, verificación y lectura de copias, 11 comprobaciones pasadas con un script provisional), `loadAllEntries()` en `src/store.ts` y una tarjeta "Copia de seguridad" en Ajustes. Typecheck y lint pasan. **Falta:** publicarla por actualización por internet y probarla en el Redmi (ver "Cómo probar T0.1" en `INSTALAR.md`). No hay restauración todavía: la copia sirve para recuperar a mano y para la fase 1.
 
 **Salida de la fase:** podés bajar una copia de seguridad desde el teléfono, y `npm test` y `npm run typecheck` corren vacíos pero en verde.
 

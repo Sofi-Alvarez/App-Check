@@ -130,6 +130,23 @@ export function resetSchedule() {
     Storage.getAllKeysSync().filter((k) => k.startsWith(OVR_PREFIX)).forEach((k) => Storage.removeItemSync(k));
   } catch {}
 }
+/**
+ * Todas las claves del almacén con su valor, para la copia de seguridad.
+ * Devuelve `null` si la lectura falla: una lista vacía parecería una copia válida de un almacén vacío.
+ */
+export function loadAllEntries(): [string, string][] | null {
+  try {
+    const out: [string, string][] = [];
+    for (const k of Storage.getAllKeysSync()) {
+      const v = Storage.getItemSync(k);
+      if (v != null) out.push([k, v]);
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
 export const flagDone = (name: string) => {
   try {
     return Storage.getItemSync('agenda:flag:' + name) === '1';
