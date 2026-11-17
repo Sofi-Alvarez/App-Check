@@ -177,3 +177,28 @@ npx eas-cli@latest update --channel preview --environment preview --message "fas
 7. **Intentar eliminar** un evento con una sesión en curso: no tiene que dejar.
 8. **Deshacer:** después de guardar o eliminar, tocar "Deshacer" en la barra de abajo antes de 8 segundos.
 9. Si un aviso de un evento nuevo tiene que sonar hoy, comprobar que suene.
+
+## Fase 4: categorías
+
+### Cómo publicarla
+
+```bash
+git pull
+```
+
+```bash
+npm install
+```
+
+```bash
+npx eas-cli@latest update --channel preview --environment preview --message "fase 4: categorías"
+```
+
+### Qué probar en el teléfono
+
+1. **Ajustes → Categorías → "Administrar categorías".** Tiene que aparecer la lista con cuántos eventos usan cada una.
+2. **Renombrar** una categoría y comprobar en Agenda que sus eventos siguen con ella (con el nombre nuevo en el editor).
+3. **Crear "Lectura"** con "Permite empezar y medir", asignarla a un evento de hoy y comprobar que ofrece "Empezar" y que su aviso trae "Empecé".
+4. **Cambiar "Es fija"** en una categoría con eventos: tiene que pedir confirmación diciendo cuántos eventos afecta.
+5. **Intentar eliminar** una categoría en uso: tiene que pedir a cuál pasar sus eventos (o archivarla).
+6. **Archivar** una categoría: deja de aparecer para elegir en el editor, y sus eventos la conservan.

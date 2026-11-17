@@ -5,7 +5,7 @@
 // fase 3 las reemplace.
 
 import type { DayType } from '../agenda';
-import type { CategoryError, NewCategory } from '../domain/categories';
+import type { CategoryError, CategoryOpError, NewCategory } from '../domain/categories';
 import type { EditScope, EventPatch, OpError } from '../domain/events';
 import type { AgendaState, ColorToken, Series } from '../domain/types';
 import type { Settings } from '../storeShape';
@@ -121,6 +121,7 @@ export interface AgendaEngine {
 }
 
 export type EventResult = { ok: true; id: string } | { ok: false; error: OpError };
+export type CategoryResult = { ok: true; id: string } | { ok: false; error: CategoryOpError };
 
 /** Operaciones de la spec 009 sobre series (fase 3). */
 export interface EventOps {
@@ -143,6 +144,12 @@ export interface EventOps {
   goalIdsFor(id: string): string[];
   /** Crea una categoría desde el editor (spec 009, sección 4). */
   createCategory(input: NewCategory): { ok: true; id: string } | { ok: false; error: CategoryError };
+  /** Todas las categorías, también las archivadas, con cuántos eventos las usan (pantalla de categorías). */
+  categoriesAll(): (CategoryInfo & { archived: boolean; usage: number })[];
+  updateCategory(id: string, input: NewCategory): CategoryResult;
+  setCategoryArchived(id: string, archived: boolean): CategoryResult;
+  /** Elimina; si la usan eventos, hay que pasar la categoría a la que se reasignan. */
+  deleteCategory(id: string, reassignTo: string | null): CategoryResult;
   /** Estado completo, para deshacer. */
   snapshot(): AgendaState;
   restore(snap: AgendaState): void;

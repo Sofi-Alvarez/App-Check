@@ -9,6 +9,7 @@ import {
 } from '../notifications';
 import { loadAllEntries } from '../store';
 import { Btn, Card, Label, Pill } from '../ui';
+import { CategoriesScreen } from './CategoriesScreen';
 
 const fmtDate = (d: Date) => `${d.getDate()} de ${MESES[d.getMonth()]}`;
 
@@ -18,6 +19,7 @@ export function SettingsScreen({ c }: { c: Ctx }) {
   const [pending, setPending] = useState<number | null>(null);
   const [tested, setTested] = useState(false);
   const [backupMsg, setBackupMsg] = useState('');
+  const [catsOpen, setCatsOpen] = useState(false);
 
   // Copia de seguridad completa (agenda editada, marcas de hecho, conteos, registro y ajustes).
   // Se arma, se verifica contra sí misma y recién entonces se comparte; si algo no cuadra, no se comparte nada.
@@ -230,6 +232,17 @@ export function SettingsScreen({ c }: { c: Ctx }) {
             </Text>
           ))}
           <Btn t={t} kind="ghost" label="Compartir informe" onPress={shareMigration} />
+        </Card>
+      ) : null}
+
+      {c.engine.events ? (
+        <Card t={t}>
+          <Label t={t}>Categorías</Label>
+          <Text style={[s.note, { color: t.muted }]}>
+            Crea, cambia de nombre o de color, archiva o elimina las categorías de tus eventos.
+          </Text>
+          <Btn t={t} label="Administrar categorías" onPress={() => setCatsOpen(true)} />
+          <CategoriesScreen c={c} visible={catsOpen} onClose={() => setCatsOpen(false)} />
         </Card>
       ) : null}
 

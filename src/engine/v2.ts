@@ -4,7 +4,9 @@
 import { DayType, addDays, iso, mondayOf, parseISO, secondsOfDay } from '../agenda';
 import type { Repository } from '../data/repository';
 import { KEYS } from '../data/repository';
-import { categoryById, createCategory } from '../domain/categories';
+import {
+  categoryById, categoryUsage, createCategory, deleteCategory, setCategoryArchived, updateCategory,
+} from '../domain/categories';
 import { addDaysISO, weekdayOf } from '../domain/dates';
 import {
   allowedDeleteScopes, allowedScopes, createEvent, daysAffected, deleteEvent, editEvent, modifiedDays,
@@ -18,7 +20,8 @@ import {
   restoreDefaults, toEngineBlocks,
 } from './legacy-ops';
 import { applyMarginTo, planMarginFor } from './margin';
-import type { AgendaEngine, CategoryInfo, EngineBlock, EventResult, GoalCard, WeekRow } from './types';
+import type { CategoryOpResult } from '../domain/categories';
+import type { AgendaEngine, CategoryInfo, CategoryResult, EngineBlock, EventResult, GoalCard, WeekRow } from './types';
 
 /** Copia profunda del estado (sin depender de `structuredClone`, que no todas las versiones de Hermes tienen). */
 const structuredCloneState = (s: AgendaState): AgendaState => JSON.parse(JSON.stringify(s));
@@ -37,6 +40,11 @@ export function createV2Engine(repo: Repository, clock: () => Date = () => new D
   const today = () => iso(clock());
   const save = (s: AgendaState) => repo.saveAgenda(s);
   const cat = (id: string) => info(categoryById(state().categories, id));
+  const commitCat = (r: CategoryOpResult): CategoryResult => {
+    if (!r.ok) return r;
+    save(r.state);
+    return { ok: true, id: r.id };
+  };
   const commit = (r: OpResult): EventResult => {
     if (!r.ok) return r;
     save(r.state);
@@ -229,6 +237,13 @@ export function createV2Engine(repo: Repository, clock: () => Date = () => new D
         save(r.state);
         return { ok: true, id: r.id };
       },
+      categoriesAll: () => {
+        const st = state();
+        return st.categories.map((c) => ({ ...info(c), archived: c.archived, usage: categoryUsage(st, c.id) }));
+      },
+      updateCategory: (id, input) => commitCat(updateCategory(state(), id, input)),
+      setCategoryArchived: (id, archived) => commitCat(setCategoryArchived(state(), id, archived)),
+      deleteCategory: (id, reassignTo) => commitCat(deleteCategory(state(), id, reassignTo)),
       snapshot: () => structuredCloneState(state()),
       restore: (snap) => save(snap),
     },

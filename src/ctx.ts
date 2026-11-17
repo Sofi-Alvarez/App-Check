@@ -1,7 +1,7 @@
 import type { StartupMigration } from './migration/startup';
 import type { Theme } from './theme';
 import type { BlockInfo } from './agenda';
-import type { AgendaEngine, EngineBlock, EventResult, Scope, TaskDraft } from './engine/types';
+import type { AgendaEngine, EngineBlock, Scope, TaskDraft } from './engine/types';
 import type { ActiveSession, DayData, Settings, TimerState } from './store';
 
 export interface Ctx {
@@ -37,5 +37,5 @@ export interface Ctx {
   /** Mueve la alternancia de los martes una semana. */
   shiftTuesdays: (days: number) => void;
   /** Ejecuta una operación de eventos (fase 3): reprograma avisos y ofrece "Deshacer" durante 8 segundos. */
-  runEvent: (op: () => EventResult, label: string) => EventResult;
+  runEvent: <T extends { ok: boolean }>(op: () => T, label: string) => T;
 }

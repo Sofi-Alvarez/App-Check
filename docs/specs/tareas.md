@@ -236,9 +236,21 @@ Sigue pendiente de la rutina original: la tarjeta "Martes con adscripción" de A
 
 | ID | Tarea | Tamaño | Depende de | Cubre |
 |---|---|---|---|---|
-| T4.1 | **Operaciones puras de categorías**: crear, editar, archivar, eliminar con reasignación, validar nombre único | M | T2.1 | CG-19, 20, 21 |
-| T4.2 | **Paleta cerrada de colores** con contraste verificado (nivel AA para texto sobre cada color) en modo claro y oscuro | S | nada | accesibilidad |
-| T4.3 | **Pantalla Ajustes → Categorías** y creación en línea desde el editor de eventos | M | T4.1, T4.2, T3.3 | CG-18 |
+| T4.1 ✅ | **Operaciones puras de categorías**: crear, editar, archivar, eliminar con reasignación, validar nombre único | M | T2.1 | CG-19, 20, 21 |
+| T4.2 ✅ | **Paleta cerrada de colores** con contraste verificado (nivel AA para texto sobre cada color) en modo claro y oscuro | S | nada | accesibilidad |
+| T4.3 ✅ | **Pantalla Ajustes → Categorías** y creación en línea desde el editor de eventos | M | T4.1, T4.2, T3.3 | CG-18 |
+
+**Estado de la fase 4 (17/11/2026).** Hecha en código, con 256 pruebas en verde (typecheck, lint y empaquetado para Android también pasan). Solo con el motor v2.
+
+| Tarea | Dónde | Qué quedó |
+|---|---|---|
+| T4.1 | `src/domain/categories.ts` | Editar (nombre único, color, propiedades), archivar y reactivar, y eliminar: si la usan eventos, solo pasándolos a otra categoría activa (se cambia en las series y en los cambios propios de cada día). No se puede archivar ni eliminar la última categoría activa. Uso = series más días con un cambio propio a esa categoría. Criterios CG-19 a CG-21 |
+| T4.2 | `src/__tests__/palette-test.ts` | Contraste de la paleta contra el fondo y la superficie, en modo claro y oscuro, con el criterio WCAG 1.4.11 (elementos no textuales, mínimo 3:1). Todos los colores cumplen; el más justo es el gris de "Pausa o comida" en modo claro, 3,08:1 contra el fondo. No hizo falta cambiar colores |
+| T4.3 | `src/screens/CategoriesScreen.tsx`, Ajustes | Tarjeta "Categorías" en Ajustes → pantalla con la lista (color, eventos que la usan, fija, archivada), crear, editar, archivar, reactivar y eliminar con reasignación. Cambiar el comportamiento de una categoría con eventos pide confirmación diciendo cuántos afecta. Todo con "Deshacer". La creación desde el editor de eventos ya estaba (fase 3) |
+
+**Notas:**
+- Un evento con una categoría archivada la conserva; en el editor esa categoría no aparece para elegir, y si no se cambia, se guarda igual.
+- El "Deshacer" de los cambios de categorías aparece al volver de la pantalla de categorías (la barra queda debajo de la pantalla mientras está abierta).
 
 **Prueba en el teléfono:** crear "Lectura" con "Permite empezar y medir", asignarla, verificar que ofrece Empezar y que el aviso trae "Empecé"; intentar eliminar una categoría en uso.
 

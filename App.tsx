@@ -13,7 +13,7 @@ import {
   setupChannels,
 } from './src/notifications';
 import type { AgendaState } from './src/domain/types';
-import type { AgendaEngine, BlockRef, EngineBlock, EventResult, MarginPlan, Scope, TaskDraft } from './src/engine/types';
+import type { AgendaEngine, BlockRef, EngineBlock, MarginPlan, Scope, TaskDraft } from './src/engine/types';
 import { createV1Engine } from './src/engine/v1';
 import { createV2Engine } from './src/engine/v2';
 import { migrateDoneToIds } from './src/schedule';
@@ -240,9 +240,9 @@ function Root() {
   // Operaciones de la fase 3 con "Deshacer" durante 8 segundos (spec 009, 3.6).
   const [undo, setUndo] = useState<{ snap: AgendaState; label: string } | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const runEvent = useCallback((op: () => EventResult, label: string): EventResult => {
+  const runEvent = useCallback(<T extends { ok: boolean }>(op: () => T, label: string): T => {
     const ev = engine.events;
-    if (!ev) return { ok: false, error: { kind: 'not-found' } };
+    if (!ev) return op(); // sin modelo nuevo no hay operaciones de eventos (no debería llamarse)
     const snap = ev.snapshot();
     const res = op();
     if (res.ok) {
