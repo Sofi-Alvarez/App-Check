@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "name": "Agenda de búsqueda",
+    "slug": "agenda",
+    "version": "1.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "com.sofia.agendabusqueda",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "SCHEDULE_EXACT_ALARM",
+        "USE_EXACT_ALARM",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "SCHEDULE_EXACT_ALARM",
+        "USE_EXACT_ALARM",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
+      "predictiveBackGestureEnabled": false,
+      "runtimeVersion": {
+        "policy": "appVersion"
+      },
+      "versionCode": 2
+    },
+    "plugins": [
+      "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "color": "#1F4FD8",
+          "defaultChannel": "agenda"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9ab1f43c-8b39-410a-9fa4-2e53515385fb"
+      }
+    },
+    "owner": "sonomans-team",
+    "updates": {
+      "url": "https://u.expo.dev/9ab1f43c-8b39-410a-9fa4-2e53515385fb"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "ios": {}
+  }
+}
