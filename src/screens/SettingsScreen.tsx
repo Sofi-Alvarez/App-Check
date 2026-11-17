@@ -1,28 +1,19 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, AppState, Linking, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
-import { MESES, addDays, dayType, iso, parseISO } from '../agenda';
+import { MESES, iso, parseISO } from '../agenda';
 import type { Ctx } from '../ctx';
 import { buildBackupParts, parseBackupParts, sizeLabel } from '../domain/backup';
 import { describeMigration, migrationReportText } from '../migration/startup';
-import { askExactAlarms, askNotifications, exactAlarmsGranted, notificationsGranted, scheduleTest } from '../notifications';
+import { askExactAlarms, askNotifications, countScheduled, exactAlarmsGranted, notificationsGranted, scheduleTest } from '../notifications';
 import { loadAllEntries } from '../store';
 import { Btn, Card, Label, Pill } from '../ui';
 
 const fmtDate = (d: Date) => `${d.getDate()} de ${MESES[d.getMonth()]}`;
 
-function upcomingAds(anchor: string, n: number): Date[] {
-  const out: Date[] = [];
-  let d = new Date();
-  for (let i = 0; i < 26 * 7 && out.length < n; i++) {
-    if (dayType(d, anchor) === 'tueAds' && iso(d) >= iso(new Date())) out.push(d);
-    d = addDays(d, 1);
-  }
-  return out;
-}
-
 export function SettingsScreen({ c }: { c: Ctx }) {
   const { theme: t, settings } = c;
   const [perm, setPerm] = useState({ notif: false, exact: false });
+  const [pending, setPending] = useState<number | null>(null);
   const [tested, setTested] = useState(false);
   const [backupMsg, setBackupMsg] = useState('');
 
@@ -75,6 +66,7 @@ export function SettingsScreen({ c }: { c: Ctx }) {
 
   const refresh = useCallback(async () => {
     setPerm({ notif: await notificationsGranted(), exact: await exactAlarmsGranted() });
+    setPending(await countScheduled());
   }, []);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- el estado se actualiza después de un await
@@ -85,8 +77,9 @@ export function SettingsScreen({ c }: { c: Ctx }) {
     return () => sub.remove();
   }, [refresh]);
 
-  const shiftAnchor = (days: number) => c.updateSettings({ anchor: iso(addDays(parseISO(settings.anchor), days)) });
-  const ads = upcomingAds(settings.anchor, 3);
+  const shiftAnchor = (days: number) => c.shiftTuesdays(days);
+  // `settings.anchor` cambia al mover los martes y fuerza a recalcular.
+  const ads = settings.anchor ? c.engine.upcomingTueAds(3, iso(new Date())).map(parseISO) : [];
 
   return (
     <ScrollView
@@ -131,6 +124,12 @@ export function SettingsScreen({ c }: { c: Ctx }) {
 
       <Card t={t}>
         <Label t={t}>Permisos</Label>
+        {pending != null ? (
+          <View style={s.opt}>
+            <Text style={[s.optText, { color: t.fg }]}>Avisos programados (próximos 14 días)</Text>
+            <Text style={[s.state, { color: t.fg }]}>{pending}</Text>
+          </View>
+        ) : null}
         <View style={s.opt}>
           <Text style={[s.optText, { color: t.fg }]}>Notificaciones</Text>
           <Text style={[s.state, { color: perm.notif ? t.ok : t.warn }]}>{perm.notif ? 'Activadas' : 'Sin permiso'}</Text>

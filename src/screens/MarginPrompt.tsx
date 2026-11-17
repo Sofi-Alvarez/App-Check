@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { hm } from '../agenda';
-import type { MarginPlan } from '../schedule';
-import { MIN_TASK } from '../schedule';
+import { MIN_TASK } from '../engine/margin';
+import type { MarginPlan } from '../engine/types';
 import type { Theme } from '../theme';
 import { Btn, MONO } from '../ui';
 

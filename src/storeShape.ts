@@ -38,6 +38,10 @@ export interface LogEvent {
   goal: string;
   delta: number;
   source: EventSource;
+  /** Nombre de la categoría al momento del registro (desde la fase 2; los eventos anteriores no lo tienen). */
+  catName?: string;
+  /** Nombre de la meta al momento del registro, en los conteos (desde la fase 2). */
+  goalName?: string;
 }
 export interface ActiveSession extends BlockInfo {
   startedAt: number;

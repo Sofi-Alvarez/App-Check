@@ -1218,7 +1218,7 @@
   "goals": [
     {
       "id": "post",
-      "name": "Post",
+      "name": "Posts",
       "kind": "quantity",
       "unit": "posts",
       "links": [],

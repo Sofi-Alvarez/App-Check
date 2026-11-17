@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
-  DIAS, INIT, LEGEND, MESES, TYPE_LABEL, addDays, blockInfo, dayType, fmtClock, hm, iso, mondayOf,
+  DIAS, INIT, MESES, TYPE_LABEL, addDays, fmtClock, hm, iso, mondayOf,
   parseISO, secondsOfDay, weekRangeLabel,
 } from '../agenda';
 import type { Ctx } from '../ctx';
-import type { TaskDraft } from '../schedule';
+import type { EngineBlock, TaskDraft } from '../engine/types';
+import { colorFor } from '../theme';
 import { Bar, Btn, Card, Label, MONO, Pill } from '../ui';
 import { TaskEditor } from './TaskEditor';
+
+const toRef = (day: string, b: EngineBlock) => ({ bid: b.id, day, title: b.t, cat: b.c, planS: b.s, planE: b.e });
 
 export function AgendaScreen({ c }: { c: Ctx }) {
   const { theme: t, now, settings, viewIso, day } = c;
   const d = parseISO(viewIso);
   const mon = mondayOf(d);
-  const type = dayType(d, settings.anchor);
+  const type = c.engine.dayKind(viewIso);
   const blocks = c.blocks;
   const [draft, setDraft] = useState<TaskDraft | null>(null);
   const todayIso = iso(now);
@@ -23,7 +26,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
   const nextBlock = isToday && curIdx < 0 ? blocks.find((b) => b.s * 60 > sec) : undefined;
   const cur = curIdx >= 0 ? blocks[curIdx] : undefined;
   const { active } = c;
-  const curInfo = cur && type ? blockInfo(viewIso, cur) : null;
+  const curInfo = cur && type ? toRef(viewIso, cur) : null;
   const activeMs = active ? (active.pausedAt || now.getTime()) - active.startedAt - active.pausedMs : 0;
   const activeOther = !!active && !!curInfo && active.bid !== curInfo.bid;
 
@@ -162,21 +165,22 @@ export function AgendaScreen({ c }: { c: Ctx }) {
       <View style={{ gap: 8 }}>
         <Label t={t}>Línea del día</Label>
         <View style={s.legend}>
-          {LEGEND.map(([k, name]) => (
-            <View key={k} style={s.legendItem}>
-              <View style={[s.dot, { backgroundColor: t.cat[k] }]} />
-              <Text style={[s.legendText, { color: t.muted }]}>{name}</Text>
+          {c.engine.legend().map((k) => (
+            <View key={k.id} style={s.legendItem}>
+              <View style={[s.dot, { backgroundColor: colorFor(t, k.color) }]} />
+              <Text style={[s.legendText, { color: t.muted }]}>{k.name}</Text>
             </View>
           ))}
         </View>
         <View>
           {blocks.map((b, i) => {
-            const col = t.cat[b.c];
+            const category = c.engine.category(b.c);
+            const col = colorFor(t, category.color);
             const done = !!day.done[b.id];
             const key = b.id;
             const muted = !!settings.muted[key];
             const isCur = i === curIdx;
-            const noTimer = b.c === 'fixed' || b.c === 'rest';
+            const noTimer = !category.tracked;
             return (
               <View key={b.id} style={[s.row, isCur && { backgroundColor: t.now }]}>
                 <View style={s.timeCol}>
@@ -211,7 +215,7 @@ export function AgendaScreen({ c }: { c: Ctx }) {
                         selected={active?.bid === b.id}
                         a11y={`Empezar ${b.t}`}
                         onPress={() => {
-                          if (active?.bid !== b.id) c.startSession(blockInfo(viewIso, b));
+                          if (active?.bid !== b.id) c.startSession(toRef(viewIso, b));
                         }}
                       />
                     ) : null}

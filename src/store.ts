@@ -67,10 +67,13 @@ export const saveActive = (a: ActiveSession | null) => {
 
 export function logEvent(
   kind: EventKind, info: BlockInfo | null, ts: number, source: EventSource = 'manual', goal = '', delta = 0,
+  names: { catName?: string; goalName?: string } = {},
 ) {
   appendLog({
     ts, day: info?.day ?? iso(new Date(ts)), kind, bid: info?.bid ?? '', title: info?.title ?? '',
     cat: info?.cat ?? '', planS: info?.planS ?? -1, planE: info?.planE ?? -1, goal, delta, source,
+    ...(names.catName ? { catName: names.catName } : {}),
+    ...(names.goalName ? { goalName: names.goalName } : {}),
   });
 }
 

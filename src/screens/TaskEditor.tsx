@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import {
   Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
-import { Cat, DIAS, DayType, LEGEND, LIST_KEYS, LIST_LABEL, hm, parseISO } from '../agenda';
+import { DIAS, DayType, LIST_KEYS, LIST_LABEL, hm, parseISO } from '../agenda';
 import type { Ctx } from '../ctx';
-import { Scope, TaskDraft, listFor, overlaps } from '../schedule';
+import { overlaps } from '../engine/legacy-ops';
+import type { Scope, TaskDraft } from '../engine/types';
 import { Btn, Label, MONO, Pill } from '../ui';
 
 function parseHm(text: string): number | null {
@@ -60,7 +61,7 @@ function Form({
   const t = c.theme;
   const isNew = draft.id == null;
   const [name, setName] = useState(draft.t);
-  const [cat, setCat] = useState<Cat>(draft.c);
+  const [cat, setCat] = useState<string>(draft.c);
   const [sText, setSText] = useState(hm(draft.s));
   const [eText, setEText] = useState(hm(draft.e));
   const [note, setNote] = useState(draft.n);
@@ -84,7 +85,7 @@ function Form({
     if (here.length) warnings.push(`Hoy se superpone con ${here.map(fmt).join(', ')}.`);
     for (const key of lists) {
       if (key === type) continue;
-      const other = overlaps(listFor(key), s, e, draft.id);
+      const other = overlaps(c.engine.listFor(key), s, e, draft.id);
       if (other.length) warnings.push(`${LIST_LABEL[key]}: se superpone con ${other.map(fmt).join(', ')}.`);
     }
   }
@@ -142,8 +143,8 @@ function Form({
         <View style={{ gap: 8 }}>
           <Label t={t}>Tipo</Label>
           <View style={s2.pills}>
-            {LEGEND.map(([k, label]) => (
-              <Pill key={k} t={t} label={label} selected={cat === k} onPress={() => setCat(k)} />
+            {c.engine.legend().map((k) => (
+              <Pill key={k.id} t={t} label={k.name} selected={cat === k.id} onPress={() => setCat(k.id)} />
             ))}
           </View>
         </View>

@@ -2,8 +2,9 @@
 /* eslint-disable import/namespace */
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { addDays, hm, iso, startOfDayMs } from './agenda';
-import { blocksFor } from './schedule';
+import { addDays, iso, startOfDayMs } from './agenda';
+import type { AgendaEngine } from './engine/types';
+import { ReminderDay, planReminders } from './reminders';
 import type { Settings, TimerState } from './store';
 
 export const CH_AGENDA = 'agenda';
@@ -158,32 +159,22 @@ export async function scheduleTest() {
 let chain: Promise<unknown> = Promise.resolve();
 
 /** Reprograma los avisos de los próximos 14 días. Se llama al abrir la app y al cambiar ajustes. */
-export function rescheduleAgenda(s: Settings, timer: TimerState): Promise<void> {
+export function rescheduleAgenda(engine: AgendaEngine, s: Settings, timer: TimerState): Promise<void> {
   const run = async () => {
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
       const exact = await exactAlarmsGranted();
       const now = Date.now();
-      const reqs: Notifications.NotificationRequestInput[] = [];
       const today = new Date();
+      const days: ReminderDay[] = [];
       for (let i = 0; i < WINDOW_DAYS; i++) {
         const d = addDays(today, i);
-        const blocks = blocksFor(d, s.anchor);
-        if (!blocks) continue;
-        const base = startOfDayMs(d);
-        blocks.forEach((b, j) => {
-          if (s.muted[b.id]) return;
-          if (s.notifStart) {
-            const at = base + b.s * 60000;
-            const extra = b.c === 'fixed' || b.c === 'rest' ? undefined : { categoryIdentifier: CATEGORY_BLOCK, data: { bid: b.id, day: iso(d) } };
-            if (at > now) reqs.push(dateReq(`ag:${iso(d)}:s${j}`, at, `${hm(b.s)} · ${b.t}`, b.n || `Hasta las ${hm(b.e)}`, CH_AGENDA, exact, extra));
-          }
-          if (s.endLead > 0 && b.e - b.s >= 30) {
-            const at = base + (b.e - s.endLead) * 60000;
-            if (at > now) reqs.push(dateReq(`ag:${iso(d)}:e${j}`, at, `Quedan ${s.endLead} min: ${b.t}`, `Termina a las ${hm(b.e)}`, CH_AGENDA, exact));
-          }
-        });
+        const blocks = engine.blocksFor(iso(d));
+        if (blocks && blocks.length) days.push({ date: iso(d), dayStartMs: startOfDayMs(d), blocks });
       }
+      const reqs: Notifications.NotificationRequestInput[] = planReminders(days, s, (c) => engine.category(c).tracked, now).map((r) =>
+        dateReq(r.id, r.at, r.title, r.body, CH_AGENDA, exact, r.start ? { categoryIdentifier: CATEGORY_BLOCK, data: r.start } : undefined),
+      );
       const renewAt = startOfDayMs(addDays(today, WINDOW_DAYS - 1)) + 9 * 3600000;
       if (renewAt > now) {
         reqs.push(dateReq('renew', renewAt, 'Abre la app', 'Ábrela para renovar los avisos de las próximas dos semanas.', CH_AGENDA, exact));
@@ -196,4 +187,13 @@ export function rescheduleAgenda(s: Settings, timer: TimerState): Promise<void> 
   };
   chain = chain.then(run, run);
   return chain as Promise<void>;
+}
+
+/** Cantidad de avisos programados en el teléfono (para la prueba del tope de avisos, T2.6). `null` si no se puede leer. */
+export async function countScheduled(): Promise<number | null> {
+  try {
+    return (await Notifications.getAllScheduledNotificationsAsync()).length;
+  } catch {
+    return null;
+  }
 }

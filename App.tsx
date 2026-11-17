@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlockInfo, addDays, blockInfo, iso, parseISO, startOfDayMs } from './src/agenda';
+import { BlockInfo, addDays, iso, parseISO, startOfDayMs } from './src/agenda';
 import type { Ctx } from './src/ctx';
 import { expoKV } from './src/data/expoKV';
 import { createRepository } from './src/data/repository';
@@ -12,9 +12,10 @@ import {
   StartTap, askNotifications, cancelTimerAlert, onStartTap, pendingStartTap, rescheduleAgenda, scheduleTimerAlert,
   setupChannels,
 } from './src/notifications';
-import {
-  MarginPlan, Scope, TaskDraft, applyMargin, blocksFor, currentBlockInfo, planMargin, deleteTask as removeTask, migrateDoneToIds, saveTask as storeTask,
-} from './src/schedule';
+import type { AgendaEngine, BlockRef, EngineBlock, MarginPlan, Scope, TaskDraft } from './src/engine/types';
+import { createV1Engine } from './src/engine/v1';
+import { createV2Engine } from './src/engine/v2';
+import { migrateDoneToIds } from './src/schedule';
 import { AgendaScreen } from './src/screens/AgendaScreen';
 import { DataScreen } from './src/screens/DataScreen';
 import { MarginPrompt } from './src/screens/MarginPrompt';
@@ -22,8 +23,8 @@ import { GoalsScreen } from './src/screens/GoalsScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { TimerScreen } from './src/screens/TimerScreen';
 import {
-  ActiveSession, DayData, EventSource, Settings, TimerState, loadActive, loadDay, loadSettings, loadTimer,
-  logEvent, resetSchedule, saveActive, saveDay, saveSettings, saveTimer,
+  ActiveSession, DayData, EventKind, EventSource, Settings, TimerState, loadActive, loadDay, loadSettings, loadTimer,
+  logEvent, saveActive, saveDay, saveTimer,
 } from './src/store';
 import { useTheme } from './src/theme';
 
@@ -35,6 +36,25 @@ const TABS: { key: Tab; label: string; glyph: string }[] = [
   { key: 'timer', label: 'Timer', glyph: '◷' },
   { key: 'ajustes', label: 'Ajustes', glyph: '⚙' },
 ];
+
+const toRef = (day: string, b: EngineBlock): BlockRef => ({ bid: b.id, day, title: b.t, cat: b.c, planS: b.s, planE: b.e });
+
+/**
+ * Arranque: arregla las marcas de hecho antiguas (v1), corre la migración al formato nuevo y elige el motor. Si la
+ * migración real ya corrió, la app usa el modelo nuevo (v2); si no (modo prueba, o se negó), sigue con el formato viejo.
+ */
+function boot(): { migration: StartupMigration; engine: AgendaEngine } {
+  migrateDoneToIds(loadSettings().anchor);
+  const repo = createRepository(expoKV);
+  const migration = runStartupMigration(repo, iso(new Date()));
+  let engine: AgendaEngine = createV1Engine();
+  try {
+    if (repo.schemaVersion() >= 2 && repo.loadAgenda()) engine = createV2Engine(repo);
+  } catch {
+    // Datos del formato nuevo dañados: se sigue con el formato viejo, que no se borra nunca.
+  }
+  return { migration, engine };
+}
 
 function defaultView(): string {
   const n = new Date();
@@ -50,20 +70,21 @@ function Root() {
   const [rev, setRev] = useState(0);
   const [schedRev, setSchedRev] = useState(0);
   const [margin, setMargin] = useState<MarginPlan | null>(null);
-  const [settings, setSettings] = useState<Settings>(() => {
-    const st = loadSettings();
-    migrateDoneToIds(st.anchor);
-    return st;
-  });
-  // Migración al formato nuevo (T1.7). En modo prueba solo calcula y no escribe nada; corre después de
-  // `migrateDoneToIds` (en el estado de arriba) para ver los datos tal como los usa la app.
-  const [migration] = useState<StartupMigration>(() => runStartupMigration(createRepository(expoKV), iso(new Date())));
+  const [{ migration, engine }] = useState(boot);
+  const [settings, setSettings] = useState<Settings>(() => engine.loadSettings());
   const [timer, setTimer] = useState<TimerState>(() => loadTimer());
   const [viewIso, setViewIso] = useState(defaultView);
   const [active, setActive] = useState<ActiveSession | null>(() => loadActive());
   const lastResched = useRef(0);
 
   const bump = useCallback(() => setRev((r) => r + 1), []);
+
+  // Registro de uso con los nombres de la categoría y de la meta al momento del toque (T2.3).
+  const log = useCallback((kind: EventKind, info: BlockInfo | null, ts: number, source: EventSource = 'manual', goal = '', delta = 0) => {
+    const catName = info?.cat && info.cat !== 'other' ? engine.category(info.cat).name : '';
+    const goalName = kind === 'count' && goal ? engine.goalName(goal) : '';
+    logEvent(kind, info, ts, source, goal, delta, { catName, goalName });
+  }, [engine]);
 
   // Si la migración real (modo aplicar) no pudo hacerse, avisarlo una vez al abrir. En modo prueba solo se muestra en Ajustes.
   useEffect(() => {
@@ -85,7 +106,7 @@ function Root() {
       await setupChannels();
       await askNotifications();
       lastResched.current = Date.now();
-      await rescheduleAgenda(loadSettings(), loadTimer());
+      await rescheduleAgenda(engine, engine.loadSettings(), loadTimer());
     })();
   }, []);
 
@@ -102,7 +123,7 @@ function Root() {
     }
     const id = setTimeout(() => {
       lastResched.current = Date.now();
-      rescheduleAgenda(settings, timer);
+      rescheduleAgenda(engine, settings, timer);
     }, 800);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -115,7 +136,7 @@ function Root() {
         setNow(new Date());
         if (Date.now() - lastResched.current > 30 * 60000) {
           lastResched.current = Date.now();
-          rescheduleAgenda(loadSettings(), loadTimer());
+          rescheduleAgenda(engine, engine.loadSettings(), loadTimer());
         }
       }
     });
@@ -144,15 +165,15 @@ function Root() {
 
   // Bloques del día que se está viendo (con las ediciones aplicadas).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const blocks = useMemo(() => blocksFor(parseISO(viewIso), settings.anchor) ?? [], [viewIso, settings.anchor, rev]);
+  const blocks = useMemo(() => engine.blocksFor(viewIso) ?? [], [engine, viewIso, settings.anchor, rev]);
 
   const updateSettings = useCallback((patch: Partial<Settings>) => {
     setSettings((cur) => {
       const next = { ...cur, ...patch };
-      saveSettings(next);
+      engine.saveSettings(next);
       return next;
     });
-  }, []);
+  }, [engine]);
 
   const toggleDone = useCallback((id: string) => {
     const d = loadDay(viewIso);
@@ -163,9 +184,9 @@ function Root() {
     else done[k] = true;
     saveDay(viewIso, { ...d, done });
     const b = blocks.find((x) => x.id === id);
-    if (b) logEvent(wasDone ? 'undone' : 'done', blockInfo(viewIso, b), Date.now());
+    if (b) log(wasDone ? 'undone' : 'done', toRef(viewIso, b), Date.now());
     bump();
-  }, [viewIso, blocks, bump]);
+  }, [viewIso, blocks, bump, log]);
 
   const changeCount = useCallback((key: string, delta: number) => {
     const d = loadDay(viewIso);
@@ -174,12 +195,12 @@ function Root() {
     saveDay(viewIso, { ...d, counts: { ...d.counts, [key]: after } });
     if (after !== before) {
       // El conteo se asocia a la sesión en curso o, si no hay, al bloque que toca ahora.
-      const cur = loadActive() ?? currentBlockInfo(new Date(), settings.anchor);
+      const cur = loadActive() ?? engine.currentBlock(new Date());
       const info = cur ? { ...cur, day: viewIso } : null;
-      logEvent('count', info, Date.now(), 'manual', key, after - before);
+      log('count', info, Date.now(), 'manual', key, after - before);
     }
     bump();
-  }, [viewIso, settings.anchor, bump]);
+  }, [viewIso, engine, bump, log]);
 
   const toggleMute = useCallback((key: string) => {
     setSettings((cur) => {
@@ -187,10 +208,10 @@ function Root() {
       if (muted[key]) delete muted[key];
       else muted[key] = true;
       const next = { ...cur, muted };
-      saveSettings(next);
+      engine.saveSettings(next);
       return next;
     });
-  }, []);
+  }, [engine]);
 
   // Editar la agenda: se relee la lista del día y se reprograman los avisos.
   const scheduleChanged = useCallback(() => {
@@ -199,19 +220,26 @@ function Root() {
   }, [bump]);
 
   const saveTask = useCallback((draft: TaskDraft, scope: Scope) => {
-    storeTask(draft, scope, viewIso, settings.anchor);
+    engine.saveTask(draft, scope, viewIso);
     scheduleChanged();
-  }, [viewIso, settings.anchor, scheduleChanged]);
+  }, [engine, viewIso, scheduleChanged]);
 
   const deleteTask = useCallback((id: string, scope: Scope) => {
-    removeTask(id, scope, viewIso, settings.anchor);
+    engine.deleteTask(id, scope, viewIso);
     scheduleChanged();
-  }, [viewIso, settings.anchor, scheduleChanged]);
+  }, [engine, viewIso, scheduleChanged]);
 
   const restoreSchedule = useCallback(() => {
-    resetSchedule();
+    engine.restore();
     scheduleChanged();
-  }, [scheduleChanged]);
+  }, [engine, scheduleChanged]);
+
+  // Mover la alternancia de los martes (tarjeta de Ajustes).
+  const shiftTuesdays = useCallback((days: number) => {
+    engine.shiftTuesdays(days);
+    setSettings(engine.loadSettings());
+    scheduleChanged();
+  }, [engine, scheduleChanged]);
 
   const commitTimer = useCallback((next: TimerState) => {
     setTimer(next);
@@ -246,18 +274,18 @@ function Root() {
   }, [timer, commitTimer]);
 
   const closeActive = useCallback((cur: ActiveSession, ts: number, source: EventSource) => {
-    logEvent('finish', cur, ts, source);
+    log('finish', cur, ts, source);
     saveActive(null);
     setActive(null);
-  }, []);
+  }, [log]);
 
   // Al terminar una tarea con más de 5 min de diferencia, se ofrece pasar el margen a otra tarea.
   const offerMargin = useCallback((cur: ActiveSession, ts: number) => {
     if (cur.planE < 0) return;
     const endMin = Math.round((ts - startOfDayMs(parseISO(cur.day))) / 60000);
-    const plan = planMargin(cur.day, settings.anchor, cur.bid, endMin);
+    const plan = engine.planMargin(cur.day, cur.bid, endMin);
     if (plan) setMargin(plan);
-  }, [settings.anchor]);
+  }, [engine]);
 
   const startSession = useCallback((info: BlockInfo | null) => {
     const ts = Date.now();
@@ -272,8 +300,8 @@ function Root() {
     const next: ActiveSession = { ...base, startedAt: ts, pausedAt: 0, pausedMs: 0 };
     saveActive(next);
     setActive(next);
-    logEvent('start', base, ts);
-  }, [closeActive, offerMargin]);
+    log('start', base, ts);
+  }, [closeActive, offerMargin, log]);
 
   const pauseResume = useCallback(() => {
     const cur = loadActive();
@@ -284,8 +312,8 @@ function Root() {
       : { ...cur, pausedAt: ts };
     saveActive(next);
     setActive(next);
-    logEvent(cur.pausedAt ? 'resume' : 'pause', cur, ts);
-  }, []);
+    log(cur.pausedAt ? 'resume' : 'pause', cur, ts);
+  }, [log]);
 
   const finishSession = useCallback(() => {
     const cur = loadActive();
@@ -297,20 +325,20 @@ function Root() {
 
   const applyMarginChoice = useCallback((targetId: string) => {
     if (!margin) return;
-    const done = applyMargin(margin, targetId, settings.anchor);
+    const done = engine.applyMargin(margin, targetId);
     const info: BlockInfo = { bid: margin.aId, day: margin.day, title: margin.aTitle, cat: '', planS: -1, planE: -1 };
-    logEvent('margin', info, Date.now(), 'manual', done ? targetId : 'none', margin.slack);
+    log('margin', info, Date.now(), 'manual', done ? targetId : 'none', margin.slack);
     setMargin(null);
     if (done) scheduleChanged();
-  }, [margin, settings.anchor, scheduleChanged]);
+  }, [margin, engine, scheduleChanged, log]);
 
   const skipMargin = useCallback(() => {
     if (margin) {
       const info: BlockInfo = { bid: margin.aId, day: margin.day, title: margin.aTitle, cat: '', planS: -1, planE: -1 };
-      logEvent('margin', info, Date.now(), 'manual', 'none', margin.slack);
+      log('margin', info, Date.now(), 'manual', 'none', margin.slack);
     }
     setMargin(null);
-  }, [margin]);
+  }, [margin, log]);
 
   // Si te olvidas de terminar, la sesión se cierra sola a la hora planificada (con una hora de gracia)
   // y queda marcada como auto_close para no mezclarla con datos reales.
@@ -331,12 +359,12 @@ function Root() {
     if (handledTaps.current.has(tap.key)) return;
     handledTaps.current.add(tap.key);
     if (tap.day !== iso(new Date())) return;
-    const b = blocksFor(parseISO(tap.day), settings.anchor)?.find((x) => x.id === tap.bid);
+    const b = engine.blocksFor(tap.day)?.find((x) => x.id === tap.bid);
     if (!b || loadActive()?.bid === b.id) return;
-    startSession(blockInfo(tap.day, b));
+    startSession(toRef(tap.day, b));
     setTab('agenda');
     setViewIso(tap.day);
-  }, [settings.anchor, startSession]);
+  }, [engine, startSession]);
 
   useEffect(() => {
     pendingStartTap().then((tap) => tap && handleStartTap(tap));
@@ -350,7 +378,7 @@ function Root() {
     viewIso, setViewIso, day, toggleDone, changeCount, toggleMute,
     timer, timerLeft, startTimer, toggleTimer, resetTimer,
     active, startSession, pauseResume, finishSession,
-    blocks, saveTask, deleteTask, restoreSchedule, migration,
+    blocks, saveTask, deleteTask, restoreSchedule, migration, engine, shiftTuesdays,
   };
 
   return (

@@ -153,7 +153,7 @@ export function legacyGoals(effectiveFrom: string, series: Series[]): Goal[] {
     id, name, kind, unit, links, reminder: null, archived: false, versions,
   });
   return [
-    g('post', 'Post', 'posts', v(1, all)),
+    g('post', 'Posts', 'posts', v(1, all)),
     g('com', 'Comentarios', 'comentarios', v(5, notThu)),
     g('rea', 'Reacciones', 'reacciones', v(10, notThu)),
     g('cold', 'Cold outreach', 'mensajes', v(10, all)),
@@ -364,6 +364,7 @@ export function migrateV1(allEntries: Entry[], today: string): MigrationResult {
     [KEYS.goals, JSON.stringify(goals)],
     [KEYS.legacyBid, JSON.stringify(legacyBid)],
     [KEYS.settings, JSON.stringify(settings)],
+    [KEYS.legacyTueAnchor, anchor],
     ...dayWrites,
     [KEYS.schemaVersion, '2'],
   ];

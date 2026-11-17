@@ -81,9 +81,10 @@ const cell = (v: string | number) => {
 
 // CSV crudo: una fila por evento, para analizarlo después sin perder nada.
 export function eventsToCsv(events: LogEvent[]): string {
-  const head = ['fecha_hora', 'dia', 'evento', 'bloque_id', 'tarea', 'categoria', 'plan_inicio_min', 'plan_fin_min', 'objetivo', 'cantidad', 'origen'];
+  // Las dos últimas columnas se agregaron en la fase 2; quedan vacías en los eventos anteriores.
+  const head = ['fecha_hora', 'dia', 'evento', 'bloque_id', 'tarea', 'categoria', 'plan_inicio_min', 'plan_fin_min', 'objetivo', 'cantidad', 'origen', 'categoria_nombre', 'objetivo_nombre'];
   const rows = events.map((e) => [
-    stamp(e.ts), e.day, e.kind, e.bid, e.title, e.cat, e.planS, e.planE, e.goal, e.delta, e.source,
+    stamp(e.ts), e.day, e.kind, e.bid, e.title, e.cat, e.planS, e.planE, e.goal, e.delta, e.source, e.catName ?? '', e.goalName ?? '',
   ]);
   return [head, ...rows].map((r) => r.map(cell).join(',')).join('\n');
 }

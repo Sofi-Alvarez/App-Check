@@ -1,5 +1,6 @@
 import { useColorScheme } from 'react-native';
 import type { Cat } from './agenda';
+import type { ColorToken } from './domain/types';
 
 export interface Theme {
   dark: boolean;
@@ -35,6 +36,12 @@ const dark: Theme = {
     english: '#E8AE55', fixed: '#9AA7B3', rest: '#6E7B75',
   },
 };
+
+/** Color del tema para un token de la paleta de categorías (mismos colores que las categorías actuales). */
+const TOKEN_TO_CAT: Record<ColorToken, Cat> = {
+  blue: 'work', pink: 'content', teal: 'project', green: 'health', amber: 'english', slate: 'fixed', gray: 'rest',
+};
+export const colorFor = (t: Theme, token: ColorToken) => t.cat[TOKEN_TO_CAT[token]];
 
 export function useTheme(): Theme {
   return useColorScheme() === 'dark' ? dark : light;

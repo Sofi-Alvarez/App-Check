@@ -1,61 +1,16 @@
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { GOAL_LABELS, addDays, dayType, goalsFor, iso, mondayOf, parseISO } from '../agenda';
+import { parseISO } from '../agenda';
 import type { Ctx } from '../ctx';
-import { blocksFor } from '../schedule';
-import { loadDay } from '../store';
 import { Bar, Card, Label, MONO } from '../ui';
-
-interface Row { label: string; value: number; target: number | null; unit: string }
-
-function weekRows(viewIso: string, anchor: string): Row[] {
-  const mon = mondayOf(parseISO(viewIso));
-  const keys = ['post', 'com', 'rea', 'cold', 'fol', 'apl'];
-  const sums: Record<string, { c: number; t: number; hasT: boolean }> = {};
-  keys.forEach((k) => (sums[k] = { c: 0, t: 0, hasT: false }));
-  let projDone = 0, projTotal = 0, exDone = 0, exTotal = 0;
-  for (let i = 0; i < 5; i++) {
-    const d = addDays(mon, i);
-    const type = dayType(d, anchor);
-    const blocks = blocksFor(d, anchor) ?? [];
-    const data = loadDay(iso(d));
-    goalsFor(type).forEach((g) => {
-      if (g.target != null) {
-        sums[g.key].t += g.target;
-        sums[g.key].hasT = true;
-      }
-    });
-    Object.entries(data.counts).forEach(([k, v]) => {
-      if (sums[k]) sums[k].c += v;
-    });
-    blocks.forEach((b) => {
-      const dur = b.e - b.s;
-      if (b.c === 'project') {
-        projTotal += dur;
-        if (data.done[b.id]) projDone += dur;
-      }
-      if (b.c === 'health') {
-        exTotal += 1;
-        if (data.done[b.id]) exDone += 1;
-      }
-    });
-  }
-  const rows: Row[] = keys.map((k) => ({
-    label: GOAL_LABELS[k], value: sums[k].c, target: sums[k].hasT ? sums[k].t : null, unit: '',
-  }));
-  rows.push({ label: 'Proyecto', value: Math.round(projDone / 6) / 10, target: Math.round(projTotal / 6) / 10, unit: ' h' });
-  rows.push({ label: 'Ejercicio', value: exDone, target: exTotal, unit: ' sesiones' });
-  return rows;
-}
 
 export function GoalsScreen({ c }: { c: Ctx }) {
   const { theme: t, settings, viewIso, day } = c;
   const d = parseISO(viewIso);
-  const type = dayType(d, settings.anchor);
-  const goals = goalsFor(type);
+  const goals = c.engine.goalsFor(viewIso);
   // `c.rev` fuerza a releer el almacenamiento tras cada cambio.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const rows = useMemo(() => weekRows(viewIso, settings.anchor), [viewIso, settings.anchor, c.rev]);
+  const rows = useMemo(() => c.engine.weekSummary(viewIso), [c.engine, viewIso, settings.anchor, c.rev]);
 
   return (
     <ScrollView contentContainerStyle={[s.content, { paddingTop: c.insets.top + 12 }]} showsVerticalScrollIndicator={false}>

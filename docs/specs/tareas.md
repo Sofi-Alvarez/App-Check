@@ -137,12 +137,40 @@ Verificación: 132 pruebas (13 de T1.7, incluida una que comprueba que el modo p
 
 | ID | Tarea | Tamaño | Depende de | Cubre |
 |---|---|---|---|---|
-| T2.1 | **Reemplazar `blocksFor`, `dayType`, `listFor` y `loadOverride`** en `schedule.ts` por `buildDay`. Quitar `settings.anchor` y todo uso de `DayType` (incluido el listado de martes con adscripción en Ajustes) | M | T1.7 | CA-05 a 10 |
-| T2.2 | **Margen con propiedades de categoría** (`movable`, `marginPreference`) y escritura como excepción `modified`. Se portan los casos actuales como pruebas de regresión | M | T2.1 | CA-03, CA-04 |
-| T2.3 | **Registro con copias de nombre**: `catName`, `goalName` y título del momento; `bid` = id de la serie. Actualizar `eventsToCsv` con las columnas nuevas | S | T2.1 | CA-17 |
-| T2.4 | **Avisos con el modelo nuevo**: usar `tracked` en lugar de nombres de categoría, silenciar por id de evento, soportar fin de semana. Extraer la construcción de avisos a una función pura para poder probarla | M | T2.1 | CG-30, CG-31 |
-| T2.5 | **Motor de progreso de metas** (cantidad, tiempo, ambas, versiones por fecha). Reemplaza `goalsFor`, `GOAL_LABELS` y `weekRows()` | L | T2.1, T1.4 | CA-11 a 15 |
-| T2.6 | **Prueba del tope de avisos en el Xiaomi** (D2): programar eventos diarios en 14, 7 y 3 días y medir cuántos suenan. Resultado: decidir el largo de la ventana. Es una prueba, no un desarrollo | S | T2.4 | spec 009 decisión 2 |
+| T2.1 ✅ | **Reemplazar `blocksFor`, `dayType`, `listFor` y `loadOverride`** en `schedule.ts` por `buildDay`. Quitar `settings.anchor` y todo uso de `DayType` (incluido el listado de martes con adscripción en Ajustes) | M | T1.7 | CA-05 a 10 |
+| T2.2 ✅ | **Margen con propiedades de categoría** (`movable`, `marginPreference`) y escritura como excepción `modified`. Se portan los casos actuales como pruebas de regresión | M | T2.1 | CA-03, CA-04 |
+| T2.3 ✅ | **Registro con copias de nombre**: `catName`, `goalName` y título del momento; `bid` = id de la serie. Actualizar `eventsToCsv` con las columnas nuevas | S | T2.1 | CA-17 |
+| T2.4 ✅ | **Avisos con el modelo nuevo**: usar `tracked` en lugar de nombres de categoría, silenciar por id de evento, soportar fin de semana. Extraer la construcción de avisos a una función pura para poder probarla | M | T2.1 | CG-30, CG-31 |
+| T2.5 ✅ | **Motor de progreso de metas** (cantidad, tiempo, ambas, versiones por fecha). Reemplaza `goalsFor`, `GOAL_LABELS` y `weekRows()` | L | T2.1, T1.4 | CA-11 a 15 |
+| T2.6 🔶 preparada | **Prueba del tope de avisos en el Xiaomi** (D2): programar eventos diarios en 14, 7 y 3 días y medir cuántos suenan. Resultado: decidir el largo de la ventana. Es una prueba, no un desarrollo | S | T2.4 | spec 009 decisión 2 |
+
+**Estado de la fase 2 (17/11/2026).** Hecha en código, con 164 pruebas en verde (typecheck, lint y empaquetado para Android también pasan).
+
+**Diseño: un motor de agenda con dos implementaciones** (`src/engine/`). Las pantallas hablan con un contrato (`AgendaEngine`) y no saben de dónde vienen los datos:
+- `v1.ts` envuelve el código que ya funcionaba (`schedule.ts`, `store.ts`) sin cambiarlo.
+- `v2.ts` hace lo mismo sobre el modelo nuevo. `legacy-ops.ts` traduce "Solo hoy", "Siempre" por tipo de día, el margen, restaurar y mover los martes a series y excepciones.
+- La app elige el motor al arrancar (`boot()` en `App.tsx`): v2 solo si la migración real ya corrió y los datos nuevos se leen bien; si no, sigue con v1. El formato viejo no se borra nunca, así que la app no puede quedar sin agenda.
+
+| Tarea | Qué quedó |
+|---|---|
+| T2.1 | La agenda del día, el evento actual, las listas por tipo de día y los martes salen del motor. En v2, sin ancla en los ajustes (queda una clave de transición `agenda2:legacyTueAnchor` para el vocabulario actual, hasta la fase 3) |
+| T2.2 | Margen sobre las propiedades de la categoría (`movable`, `marginPreference`) en `src/engine/margin.ts`; en v2 se guarda como excepciones del día |
+| T2.3 | El registro guarda `catName` y `goalName` (opcionales: los eventos anteriores no los tienen). El CSV suma dos columnas al final: `categoria_nombre` y `objetivo_nombre` |
+| T2.4 | Avisos desde el motor con un plan puro (`src/reminders.ts`): el botón "Empecé" depende de `tracked`, y funcionan en cualquier día con eventos |
+| T2.5 | Motor de progreso (`src/domain/goals.ts`): cantidad, tiempo con sesiones confirmadas, ambas y versiones por fecha (criterios CA-11 a CA-15). La pantalla de Metas conserva por ahora el cálculo actual de "Proyecto" (horas planificadas hechas) y "Ejercicio" (sesiones marcadas), según la decisión 3 |
+| T2.6 | Ajustes muestra "Avisos programados (próximos 14 días)". Falta la prueba en el Xiaomi |
+
+**Prueba de equivalencia** (`src/engine/__tests__/equivalence-test.ts`): el código actual corre sobre un almacén simulado y se compara con el motor v2 desde la misma fixture migrada, día por día del 02/11/2026 al 12/01/2027, sin cambios y después de cada operación (Solo hoy, Siempre, tarea separada, margen, restaurar, mover martes, ajustes, metas y totales). Si se rompe el motor a propósito, la prueba falla.
+
+**Diferencias aceptadas o visibles (mínimas):**
+1. En la v1, un día con cambios "Solo hoy" quedaba congelado frente a cambios "Siempre" posteriores. En la v2, ese día recibe el cambio y conserva solo lo que se cambió ese día (como pide la spec 009). Hay una prueba que lo documenta.
+2. Las tarjetas de Metas usan el nombre de la meta: "Posts" en vez de "Post publicado" o "Post programado".
+3. "Postulaciones" aparece también los martes con adscripción (decisión 2).
+4. Si se mueven los martes con cambios "Solo hoy" en un martes, esos cambios quedan en el martes que ya no corresponde (en la v1 seguían en ese día). Caso raro.
+
+**Publicación en dos pasos (recomendado):**
+- **E2a, ahora:** esta versión con la migración todavía en modo prueba. La app sigue con el motor v1; cambian por dentro los avisos, el registro con nombres, el CSV y el contador de avisos. Sirve para la prueba del tope (T2.6) y para comprobar que nada visible cambió.
+- **E2b, después:** copia de seguridad nueva en Drive, cambiar `MIGRATION_MODE` a `'apply'` y publicar. Ahí migra de verdad y pasa al motor v2. Revisar tres días con registro.
 
 **Prueba en el teléfono:** agenda de varios días, avisos de mañana a la hora correcta, un margen aplicado, y la pantalla de metas con los mismos números de antes.
 

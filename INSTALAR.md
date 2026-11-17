@@ -95,3 +95,30 @@ Si la terminal es nueva, primero carga tu token con `export EXPO_TOKEN=...`.
 3. Si el mensaje está en verde y dice **"Prueba correcta"**, la migración funcionaría con tus datos. Si está en naranja, encontró algo para revisar.
 4. Toca **"Compartir informe"** y mándalo (por ejemplo, a tu correo) para pasárselo a Claude. No incluye títulos ni notas de tus tareas.
 5. Usa la agenda normalmente: nada de lo que ves debería haber cambiado.
+
+## Fase 2, paso E2a: motor nuevo, todavía con el formato viejo
+
+Esta actualización no migra tus datos. La app sigue usando el formato actual, pero por dentro ya pasa por el "motor" nuevo. También cambian los avisos y el CSV (dos columnas nuevas al final), y en Ajustes aparece la cantidad de avisos programados.
+
+### Cómo publicarla
+
+```bash
+git pull
+```
+
+```bash
+npm install
+```
+
+```bash
+npx eas-cli@latest update --channel preview --environment preview --message "fase 2: motor de agenda"
+```
+
+### Qué revisar en el teléfono
+
+1. Cierra y abre la app dos veces.
+2. **Agenda:** mira hoy, mañana y un martes de cada tipo. Todo tiene que verse igual que antes.
+3. **Metas:** los números tienen que ser los mismos. La única diferencia esperada: la tarjeta dice "Posts" en vez de "Post publicado".
+4. **Ajustes → Permisos:** anota el número de **"Avisos programados (próximos 14 días)"**.
+5. **Prueba del tope de avisos (T2.6):** deja el teléfono bloqueado y fíjate si suenan los avisos de las próximas horas (inicio y "quedan 5 min").
+6. Pásale a Claude el número de avisos programados y si sonaron.
