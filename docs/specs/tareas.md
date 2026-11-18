@@ -291,7 +291,7 @@ Sigue pendiente de la rutina original: la tarjeta "Martes con adscripción" de A
 | T6.2 ✅ | **Limpieza**: borrar `DayType`, `Cat`, `G_*`, `GOAL_LABELS`, el adaptador de la fase 1 y los textos de búsqueda de empleo que queden en el código | M | todas | CA, CG |
 | T6.3 ✅ | **Revisión de accesibilidad**: controles de 48 dp o más, hoja de alcance legible con lectores de pantalla y texto grande, mensajes de error junto al campo | M | T3.4, T5.2 | spec 009 §7.3 |
 | T6.4 ✅ | **Textos en claves** para poder traducir después, sin traducir todavía | M | T6.2 | principio 8 de la constitución |
-| T6.5 | **Publicación**: se agrega solo JavaScript, así que alcanza con una actualización por internet para la versión 1.1.0, siempre que no se sumen librerías con código nativo. Se agrega una nota en `INSTALAR.md` | S | todas | entrega |
+| T6.5 ✅ | **Publicación**: se agrega solo JavaScript, así que alcanza con una actualización por internet para la versión 1.1.0, siempre que no se sumen librerías con código nativo. Se agrega una nota en `INSTALAR.md` | S | todas | entrega |
 | T6.6 | **Pasada final** sobre todos los criterios CA y CG con la lista de verificación del teléfono | M | todas | cierre |
 
 ---
